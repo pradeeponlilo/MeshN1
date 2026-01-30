@@ -17,6 +17,7 @@
       --warn:#ffd166;
       --bad:#ff3b3b;
       --good:#7CFFB2;
+      --promoted:#ffd166;
       --link:#2a3564;
       --card: rgba(255,255,255,.05);
       --stroke: rgba(255,255,255,.12);
@@ -204,6 +205,68 @@
       border-bottom:10px solid var(--alarm);
       background:none;
     }
+
+    .logbox{
+      position:absolute;
+      left:14px;
+      right:14px;
+      bottom:14px;
+      background: rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(6px);
+      border-radius:14px;
+      padding:10px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height: 180px;
+    }
+    .logbox .head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .logbox .title{
+      font-size:13px;
+      font-weight:800;
+    }
+    .logbox .actions{
+      display:flex;
+      gap:8px;
+    }
+    .logbox .lines{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      overflow:auto;
+      font-size:11px;
+      color:rgba(233,240,255,.92);
+    }
+    .logbox .line{
+      display:flex;
+      gap:8px;
+      align-items:baseline;
+    }
+    .logbox .line .lvl{
+      font-weight:700;
+      font-size:10px;
+      padding:1px 6px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .logbox .line .lvl.INFO{
+      color:var(--cp);
+      border-color:rgba(80,211,255,.35);
+    }
+    .logbox .line .lvl.WARN{
+      color:var(--warn);
+      border-color:rgba(255,209,102,.35);
+    }
+    .logbox .line .lvl.ALARM{
+      color:var(--alarm);
+      border-color:rgba(255,90,122,.35);
+    }
   </style>
 </head>
 
@@ -270,8 +333,7 @@
         <div class="sp"></div>
         <label>MRI EMI Zone</label>
         <div class="row" style="margin-top:8px">
-          <button id="btnMriOn">MRI ON (Ward B)</button>
-          <button id="btnMriOff">MRI OFF</button>
+          <button id="btnMriToggle">MRI OFF</button>
         </div>
         <div class="sp"></div>
         <label>Gateway</label>
@@ -402,6 +464,17 @@
         <g id="gNodes"></g>
         <g id="gLabels"></g>
       </svg>
+      <div class="logbox">
+        <div class="head">
+          <div class="title">Live Explanation</div>
+          <div class="actions">
+            <button id="btnLogClear">Clear</button>
+            <button id="btnLogPause">Pause</button>
+            <button id="btnLogCopy">Copy</button>
+          </div>
+        </div>
+        <div class="lines" id="logLines"></div>
+      </div>
     </main>
   </div>
 
@@ -421,7 +494,7 @@
     2200,
     [
       {t:0, type:"SET_HUD", title:"Baseline", desc:"System starts stable. A new node will join via a chosen parent; DP turns on after CP stability gate."},
-      {t:60, type:"JOIN_NODE", nodeId:"A10", via:"C1"},
+      {t:60, type:"JOIN_NODE", nodeId:"A06", via:"C1"},
       {t:120, type:"SET_TRAFFIC", value:1.1},
       {t:140, type:"SET_INTERFERENCE", value:0.12},
       {t:400, type:"SET_HUD", title:"DP enabled progressively", desc:"After CP is stable, DP telemetry begins. Forwarders may open ephemeral forwarding windows."},
@@ -437,7 +510,7 @@
     2400,
     [
       {t:0, type:"SET_HUD", title:"RAC Demo", desc:"Traffic and interference will increase. Receiver Admission Control will enter Guarded/Critical and drop DP selectively."},
-      {t:40, type:"JOIN_NODE", nodeId:"B20", via:"C2"},
+      {t:40, type:"JOIN_NODE", nodeId:"B08", via:"C2"},
       {t:100, type:"SET_TRAFFIC", value:1.4},
       {t:460, type:"SET_TRAFFIC", value:3.8},
       {t:520, type:"SET_INTERFERENCE", value:0.55},
@@ -476,7 +549,7 @@
       {t:120, type:"COMPROMISE_KEY", nodeId:"A03"},
       {t:180, type:"SET_INTERFERENCE", value:0.20},
       {t:600, type:"SET_HUD", title:"Rekey attempts", desc:"Rekey is simulated periodically; trust returns to OK when successful. Quarantine can drop DP."},
-      {t:1100, type:"COMPROMISE_KEY", nodeId:"B11"},
+      {t:1100, type:"COMPROMISE_KEY", nodeId:"B05"},
       {t:1500, type:"SET_INTERFERENCE", value:0.12},
     ]
   );
@@ -514,8 +587,8 @@
 
   add(
     "hospital_s1_telemetry",
-    "Hospital S1: Normal vitals → server",
-    "Ward A/B periodic telemetry from multiple patients; stable CP + DP.",
+    "Hospital S1: Normal vitals (telemetry)",
+    "Ward A/B periodic telemetry from multiple endpoints; stable CP + DP.",
     2200,
     [
       {t:0, type:"SET_HUD", title:"S1 Normal Telemetry", desc:"Vitals flow from Ward A/B to GH via best sink. Observe stable DP + CP."},
@@ -523,7 +596,8 @@
       {t:120, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
       {t:160, type:"PATIENT_EVENT", patientId:"P3", kind:"TELEMETRY"},
       {t:200, type:"PATIENT_EVENT", patientId:"P4", kind:"TELEMETRY"},
-      {t:400, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
+      {t:240, type:"PATIENT_EVENT", patientId:"P5", kind:"TELEMETRY"},
+      {t:420, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
       {t:520, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
       {t:640, type:"PATIENT_EVENT", patientId:"P3", kind:"TELEMETRY"},
       {t:760, type:"PATIENT_EVENT", patientId:"P4", kind:"TELEMETRY"},
@@ -533,41 +607,41 @@
   add(
     "hospital_s2_hr_alarm",
     "Hospital S2: High HR Alarm (Ward B)",
-    "Patient in Ward B escalates to ALARM DP. Telemetry may drop first if RAC escalates.",
+    "B03 sends ALARM bursts (higher priority).",
     2400,
     [
-      {t:0, type:"SET_HUD", title:"S2 High HR", desc:"P2 (Ward B) telemetry then HR alarm. Alarm is prioritized vs telemetry."},
+      {t:0, type:"SET_HUD", title:"S2 High HR", desc:"B03 telemetry then HR alarm. Alarm is prioritized vs telemetry."},
       {t:80, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
       {t:180, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
       {t:220, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
       {t:260, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
-      {t:340, type:"SET_TRAFFIC", value:2.6},
-      {t:380, type:"SET_INTERFERENCE", value:0.25},
+      {t:340, type:"SET_TRAFFIC", value:2.4},
+      {t:380, type:"SET_INTERFERENCE", value:0.22},
     ]
   );
 
   add(
     "hospital_s3_fall",
-    "Hospital S3: Fall detected (Ward A)",
-    "Fall alarm bursts; RAC should preserve ALARM under pressure.",
+    "Hospital S3: Patient Fall (Ward A)",
+    "A02 sends ALARM burst; RAC preserves ALARM.",
     2400,
     [
-      {t:0, type:"SET_HUD", title:"S3 Fall", desc:"P3 (Ward A) fall alarm. Inject mild congestion; alarms should survive."},
+      {t:0, type:"SET_HUD", title:"S3 Fall", desc:"A02 fall alarm. Inject mild congestion; alarms should survive."},
       {t:120, type:"PATIENT_EVENT", patientId:"P3", kind:"FALL"},
       {t:160, type:"PATIENT_EVENT", patientId:"P3", kind:"FALL"},
       {t:200, type:"PATIENT_EVENT", patientId:"P3", kind:"FALL"},
-      {t:360, type:"SET_TRAFFIC", value:3.2},
-      {t:420, type:"SET_INTERFERENCE", value:0.35},
+      {t:360, type:"SET_TRAFFIC", value:3.0},
+      {t:420, type:"SET_INTERFERENCE", value:0.32},
     ]
   );
 
   add(
     "hospital_s4_nurse_call",
-    "Hospital S4: Nurse call button (Ward B)",
-    "User-triggered ALARM DP; show fast path and survivability.",
+    "Hospital S4: Nurse Call (Ward B)",
+    "B06 sends ALARM; delivery prioritized.",
     2000,
     [
-      {t:0, type:"SET_HUD", title:"S4 Nurse Call", desc:"P4 presses nurse call. Alarm DP prioritised to GH."},
+      {t:0, type:"SET_HUD", title:"S4 Nurse Call", desc:"B06 nurse call. Alarm DP prioritised to GH."},
       {t:140, type:"PATIENT_EVENT", patientId:"P4", kind:"NURSE_CALL"},
       {t:240, type:"PATIENT_EVENT", patientId:"P4", kind:"NURSE_CALL"},
       {t:320, type:"SET_TRAFFIC", value:2.0},
@@ -576,18 +650,39 @@
 
   add(
     "hospital_s5_mri_emi",
-    "Hospital S5: MRI EMI zone near Ward B beds",
-    "MRI causes localized attenuation/EMI; channel scores degrade; blacklists may trigger; alarms still prioritised.",
+    "Hospital S5: MRI Interference + reroute",
+    "MRI ON affects B02,B03,B04; reroute away until MRI OFF.",
     2600,
     [
-      {t:0, type:"SET_HUD", title:"S5 MRI EMI", desc:"MRI turns ON near Ward B. Observe localized PER increase + channel blacklist + RAC gating."},
-      {t:120, type:"MRI_ON", id:"MRI1", x: 740, y: 360, r: 220, strength: 0.85, until: 1900},
+      {t:0, type:"SET_HUD", title:"S5 MRI Interference", desc:"MRI turns ON near Ward B. Observe PER increase + reroute away from B02/B03/B04."},
+      {t:120, type:"MRI_ON"},
       {t:160, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
-      {t:220, type:"PATIENT_EVENT", patientId:"P4", kind:"TELEMETRY"},
+      {t:220, type:"PATIENT_EVENT", patientId:"P5", kind:"TELEMETRY"},
       {t:420, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
-      {t:520, type:"SET_TRAFFIC", value:3.6},
-      {t:1900, type:"MRI_OFF", id:"MRI1"},
-      {t:2100, type:"SET_HUD", title:"MRI off", desc:"EMI cleared. Scores should recover; DP delivery improves."},
+      {t:520, type:"SET_TRAFFIC", value:3.2},
+      {t:620, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
+      {t:620, type:"MRI_OFF"},
+      {t:700, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
+      {t:740, type:"PATIENT_EVENT", patientId:"P4", kind:"TELEMETRY"},
+      {t:780, type:"PATIENT_EVENT", patientId:"P3", kind:"TELEMETRY"},
+      {t:900, type:"SET_HUD", title:"MRI off", desc:"EMI cleared. Nodes return to optimal parents; drops reduce."},
+    ]
+  );
+
+  add(
+    "hospital_s6_forwarder_failure",
+    "Hospital S6: Forwarder failure + auto-promotion",
+    "C1 fails then C2 fails; auto-promote FN*; demote when restored.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"S6 Forwarder failure", desc:"C1 then C2 fail. Auto-promoted FN* should appear until restored."},
+      {t:120, type:"SET_TRAFFIC", value:1.6},
+      {t:200, type:"SET_HUD", title:"C1 off", desc:"Forwarder C1 goes down."},
+      {t:200, type:"NODE_OFF", nodeId:"C1"},
+      {t:400, type:"SET_HUD", title:"C2 off", desc:"Forwarder C2 goes down. Auto-promotion should trigger."},
+      {t:400, type:"NODE_OFF", nodeId:"C2"},
+      {t:900, type:"SET_HUD", title:"C1 restored", desc:"Forwarder restored; promoted FN* demotes back to EN."},
+      {t:900, type:"NODE_ON", nodeId:"C1"},
     ]
   );
 
@@ -657,6 +752,11 @@
       this.running = false;
       this.speed = 0.5;
       this.systemOn = true;
+      this.mriOn = false;
+      this.mriAffected = new Set(["B02","B03","B04"]);
+      this.log = [];
+      this.logMax = 80;
+      this._promotionState = "OK";
 
       // knobs (UI controlled)
       this.knobs = {
@@ -725,10 +825,10 @@
       const baseE = this.knobs.energyBudget;
 
       this.rooms = [
-        this._makeRoom("WardA", 70, 110, 420, 470),
-        this._makeRoom("WardB", 520, 110, 420, 470),
-        this._makeRoom("GatewayRoom", 960, 110, 120, 210),
-        this._makeRoom("NurseStation", 960, 360, 120, 220),
+        this._makeRoom("WardA", 60, 120, 340, 420),
+        this._makeRoom("WardB", 430, 120, 340, 420),
+        this._makeRoom("GatewayRoom", 800, 120, 240, 190),
+        this._makeRoom("NurseStation", 800, 360, 240, 190),
       ];
 
       const roomById = (id)=>this.rooms.find(r=>r.id===id);
@@ -744,32 +844,32 @@
 
       // Two sinks in gateway room
       {
-        const p1 = place("GatewayRoom");
-        const p2 = place("GatewayRoom");
+        const p1 = {x: 720, y: 210};
+        const p2 = {x: 720, y: 270};
         this.nodes.push(this._mkNode("SN1","SN", p1.x, p1.y, baseE*2.5, false));
         this.nodes.push(this._mkNode("SN2","SN", p2.x, p2.y, baseE*2.5, false));
       }
 
       // Ward A endpoints
-      for(let i=1;i<=10;i++){
+      for(let i=1;i<=6;i++){
         const id = "A"+String(i).padStart(2,"0");
         const p = place("WardA");
         this.nodes.push(this._mkNode(id,"EN", p.x, p.y, baseE, true));
       }
 
       // Ward B endpoints
-      for(let i=1;i<=20;i++){
+      for(let i=1;i<=8;i++){
         const id = "B"+String(i).padStart(2,"0");
         const p = place("WardB");
         this.nodes.push(this._mkNode(id,"EN", p.x, p.y, baseE, true));
       }
 
       // Corridor helpers (forwarder candidates)
-      this.nodes.push(this._mkNode("C1","FN", 495,260, baseE*1.4, true));
-      this.nodes.push(this._mkNode("C2","FN", 495,430, baseE*1.4, true));
+      this.nodes.push(this._mkNode("C1","FN", 520,255, baseE*1.4, true));
+      this.nodes.push(this._mkNode("C2","FN", 520,420, baseE*1.4, true));
 
       // Proximity links
-      this._buildProximityLinks(230, 4);
+      this._buildProximityLinks(280, 2);
 
       // default join states
       this.nodes.forEach(n=>{
@@ -781,14 +881,14 @@
 
       // Patient mapping
       this.patients = [
-        {id:"P1", room:"WardA", nodeId:"A03"},
-        {id:"P2", room:"WardB", nodeId:"B11"},
-        {id:"P3", room:"WardA", nodeId:"A09"},
-        {id:"P4", room:"WardB", nodeId:"B02"},
+        {id:"P1", room:"WardA", nodeId:"A01"},
+        {id:"P2", room:"WardB", nodeId:"B03"},
+        {id:"P3", room:"WardA", nodeId:"A02"},
+        {id:"P4", room:"WardB", nodeId:"B06"},
+        {id:"P5", room:"WardB", nodeId:"B02"},
       ];
 
       this.gatewayOnline = true;
-      this.interferenceSources = [];
     }
 
     _mkNode(id, role, x,y, energy, battery){
@@ -796,7 +896,7 @@
       const channels = [11,15,20];
 
       return {
-        id, role, x,y,
+        id, role, roleBase: role, promoted: false, x,y,
         battery: !!battery,
         energy: energy,
         duty: 0, // observed duty fraction
@@ -809,7 +909,7 @@
         queues: {cp:[], dp:[]},
         neighbors: [], // bounded
         parent: null,  // upstream choice
-        attach: { parent:null, backups:[], lastEval:0, sink:null },
+        attach: { parent:null, backups:[], lastEvalTick:0, lastParentChangeTick:-999, sink:null },
         fwd: {active:false, until:0, cooldown:0},
         ch: {
           ids: channels,
@@ -858,6 +958,7 @@
 
       const meshNodes = this.nodes.filter(n=>n.role!=="GH");
       for(const n of meshNodes){
+        const kLocal = (n.role==="FN") ? Math.min(3, k+1) : k;
         const near = meshNodes
           .filter(m=>m.id!==n.id)
           .map(m=>{
@@ -865,7 +966,7 @@
             return {id:m.id, dist:Math.sqrt(dx*dx+dy*dy)};
           })
           .sort((p,q)=>p.dist-q.dist)
-          .slice(0,k);
+          .slice(0,kLocal);
 
         for(const o of near) add(n.id, o.id);
       }
@@ -881,6 +982,9 @@
       this.mode = "NORMAL";
       this.scIndex = 0;
       this.systemOn = true;
+      this.mriOn = false;
+      this.log = [];
+      this._promotionState = "OK";
       this.seed = {v: 123456789};
       this.packets = [];
       this.drops = [];
@@ -895,6 +999,14 @@
       };
       this._initTopology();
       if (this.onHud) this.onHud("Ready","Load a scenario, then Play. Click nodes to inspect.");
+    }
+
+    logEvent(level, msg){
+      const entry = {t:this.tick, level, msg};
+      this.log.push(entry);
+      if(this.log.length > this.logMax){
+        this.log.splice(0, this.log.length - this.logMax);
+      }
     }
 
     loadScenario(sc){
@@ -938,6 +1050,18 @@
           n.attach.backups = [];
           n.attach.sink = null;
         }
+        if(n.role === "FN"){
+          this.logEvent("WARN", `${n.id} OFF → switching traffic to alternate relay`);
+          if(this.onHud) this.onHud("Forwarder OFF", `${n.id} OFF → switching traffic to alternate relay.`);
+          const anyReal = this.nodes.some(x=>x.role==="FN" && !x.promoted && x.enabled);
+          if(!anyReal){
+            this.logEvent("WARN", `${n.id} OFF → no forwarders available`);
+            if(this.onHud) this.onHud("Forwarder OFF", `${n.id} OFF → no forwarders available.`);
+          }
+        }
+        if(n.role === "SN"){
+          this.logEvent("WARN", `${n.id} OFF → rerouting to remaining sink`);
+        }
       } else {
         if(n.role === "SN" || n.role === "GH"){
           n.join = JOIN.DP_ON;
@@ -947,6 +1071,12 @@
           n.join = JOIN.DP_ON;
         }
         n.sec.trust = TRUST.OK;
+        if(n.role === "FN"){
+          this.logEvent("INFO", `${n.id} ON → relay restored`);
+        }
+        if(n.role === "SN"){
+          this.logEvent("INFO", `${n.id} ON → sink restored`);
+        }
       }
     }
 
@@ -1030,18 +1160,14 @@
             this._sendPatientEvent(ev.patientId, ev.kind);
             break;
           case "MRI_ON":
-            this.interferenceSources.push({
-              id: ev.id || "MRI1",
-              x: ev.x, y: ev.y,
-              r: ev.r || 180,
-              strength: ev.strength || 0.8,
-              until: ev.until || (this.tick + 900)
-            });
-            this.onHud?.("MRI ON", "Localized EMI zone active. Nodes near MRI see higher PER; channels may blacklist.");
+            this.mriOn = true;
+            this.logEvent("WARN", "MRI ON → affected: B02,B03,B04 → rerouting");
+            this.onHud?.("MRI ON", "MRI EMI active near Ward B beds. Affected nodes reroute away from interference.");
             break;
           case "MRI_OFF":
-            this.interferenceSources = (this.interferenceSources||[]).filter(s=>s.id!==ev.id);
-            this.onHud?.("MRI OFF", "EMI zone cleared.");
+            this.mriOn = false;
+            this.logEvent("INFO", "MRI OFF → interference cleared → stabilizing");
+            this.onHud?.("MRI OFF", "MRI EMI cleared. Links stabilize and drops reduce.");
             break;
           case "SINK_DOWN":
             this.setNodePower(ev.nodeId, false);
@@ -1050,6 +1176,14 @@
           case "SINK_UP":
             this.setNodePower(ev.nodeId, true);
             this.onHud?.("Sink UP", `${ev.nodeId} restored.`);
+            break;
+          case "NODE_OFF":
+            this.setNodePower(ev.nodeId, false);
+            this.onHud?.("Node OFF", `${ev.nodeId} turned OFF.`);
+            break;
+          case "NODE_ON":
+            this.setNodePower(ev.nodeId, true);
+            this.onHud?.("Node ON", `${ev.nodeId} restored.`);
             break;
           case "GATEWAY_DOWN":
             this.gatewayOnline = false;
@@ -1236,20 +1370,6 @@
       return "DELIVERED";
     }
 
-    _localInterferenceAt(x,y){
-      if(!this.interferenceSources?.length) return 0;
-      let add = 0;
-      for(const s of this.interferenceSources){
-        const dx=x-s.x, dy=y-s.y;
-        const d=Math.sqrt(dx*dx+dy*dy);
-        if(d <= s.r){
-          const w = 1 - (d/s.r);
-          add = Math.max(add, s.strength * w);
-        }
-      }
-      return add;
-    }
-
     _estimatePER(srcId, dstId, ch){
       // coarse model: base PER from interference + distance factor
       const A=this._node(srcId), B=this._node(dstId);
@@ -1268,9 +1388,9 @@
         chPenalty = clamp(s,0,1)*0.25;
       }
 
-      const midx = (A.x+B.x)/2, midy = (A.y+B.y)/2;
-      const emi = this._localInterferenceAt(midx, midy);
-      const per = clamp(0.02 + (this.knobs.interference + emi)*0.55 + dFactor*0.25 + chPenalty, 0, 0.95);
+      const mriBoost = (this.mriOn && (this.mriAffected.has(srcId) || this.mriAffected.has(dstId))) ? 0.45 : 0;
+      const effectiveInterference = clamp(this.knobs.interference + mriBoost, 0, 1);
+      const per = clamp(0.02 + effectiveInterference*0.55 + dFactor*0.25 + chPenalty, 0, 0.95);
       return per;
     }
 
@@ -1638,25 +1758,66 @@
       return this.nodes.filter(n=>n.role==="SN" && n.enabled);
     }
 
+    _setParent(node, nextId, reason=""){
+      if(!node || !nextId) return;
+      const prev = node.attach.parent;
+      if(prev === nextId) return;
+      node.attach.parent = nextId;
+      node.parent = nextId;
+      if(this.tick - (node.attach.lastParentChangeTick || 0) > 40){
+        const reasonNote = reason ? ` (${reason})` : "";
+        this.logEvent("INFO", `${node.id} reattached: ${prev || "—"} → ${nextId}${reasonNote}`);
+      }
+      node.attach.lastParentChangeTick = this.tick;
+      if(this.features.explain){
+        this.drops.push({t:this.tick, x:node.x, y:node.y-30, msg:`REATTACH→${nextId}`});
+        if(this.drops.length>60) this.drops.splice(0, this.drops.length-60);
+      }
+    }
+
     _updateAttachment(node){
       if(!node.enabled) return;
       if(node.role==="GH" || node.role==="SN") return;
       if(node.join===JOIN.OFF) return;
 
-      if(this.tick - (node.attach.lastEval||0) < 25) return;
-      node.attach.lastEval = this.tick;
+      // immediate failover if parent down
+      const parentDown = node.attach.parent && !this._node(node.attach.parent)?.enabled;
+      if(parentDown){
+        const fallback = node.attach.backups.find(id => this._node(id)?.enabled);
+        if(fallback){
+          this._setParent(node, fallback, "parent down");
+          return;
+        }
+        node.attach.lastEvalTick = -999;
+      }
+
+      if(this.tick - (node.attach.lastEvalTick||0) < 25) return;
+      node.attach.lastEvalTick = this.tick;
+
+      const wDist = 1.0;
+      const wMri = 2.5;
+      const wRac = 0.8;
+      const wEnergy = 0.4;
+
+      const mriHit = this.mriOn && (this.mriAffected.has(node.id));
 
       const nbrIds = this._neighbors(node.id);
       const nbrs = nbrIds.map(id=>this._node(id)).filter(n=>n && n.enabled && n.role!=="GH");
       if(!nbrs.length) return;
 
+      const roleFilter = node.role==="FN"
+        ? (n)=>n.role==="SN"
+        : (n)=>n.role==="FN" || n.role==="SN";
+
       const cand = nbrs
-        .filter(n => n.role==="FN" || n.role==="SN")
+        .filter(roleFilter)
         .map(n=>{
           const dist = this._linkDist(node.id, n.id);
-          const racPenalty = (n.rac==="CRITICAL"? 220 : n.rac==="GUARDED"? 70 : 0);
-          const energyPenalty = (n.battery ? clamp((25-n.energy)/25,0,1)*120 : 0);
-          const score = dist + racPenalty + energyPenalty;
+          const distNorm = clamp(dist / 260, 0, 1);
+          const racPenalty = (n.rac==="CRITICAL"? 1 : n.rac==="GUARDED"? 0.6 : 0);
+          const energyPenalty = (n.battery ? clamp((30-n.energy)/30,0,1) : 0);
+          const mriPenalty = (this.mriOn && (this.mriAffected.has(n.id) || mriHit)) ? 1 : 0;
+          const score = (wDist*distNorm) + (wRac*racPenalty) + (wEnergy*energyPenalty) + (wMri*mriPenalty);
           return {id:n.id, role:n.role, score};
         })
         .sort((a,b)=>a.score-b.score);
@@ -1667,27 +1828,93 @@
       const sinkBest = sinks
         .map(s=>{
           const dx=node.x-s.x, dy=node.y-s.y;
-          return {id:s.id, d: Math.sqrt(dx*dx+dy*dy)};
+          const d = Math.sqrt(dx*dx+dy*dy);
+          const score = clamp(d / 900, 0, 1);
+          return {id:s.id, score};
         })
-        .sort((a,b)=>a.d-b.d)[0]?.id || null;
+        .sort((a,b)=>a.score-b.score)[0]?.id || null;
 
       node.attach.sink = sinkBest;
 
       const newParent = cand[0].id;
-      const backups = cand.slice(1,4).map(c=>c.id);
+      const backups = cand.slice(1,3).map(c=>c.id);
+      node.attach.backups = backups;
 
       const cur = node.attach.parent;
+      const reason = this.mriOn && (mriHit || (cur && this.mriAffected.has(cur))) ? "MRI avoidance" : "";
       const curOk = cur && this._node(cur)?.enabled;
-
       if(!curOk || cur!==newParent){
-        node.attach.parent = newParent;
-        node.attach.backups = backups;
-        node.parent = newParent;
+        this._setParent(node, newParent, reason);
+      }
+    }
 
-        if(this.features.explain){
-          this.drops.push({t:this.tick, x:node.x, y:node.y-30, msg:`REATTACH→${newParent}`});
-          if(this.drops.length>60) this.drops.splice(0, this.drops.length-60);
+    _updatePromotion(){
+      if(this.tick % 55 !== 0) return;
+      const realFNs = this.nodes.filter(n=>n.role==="FN" && !n.promoted);
+      const anyRealEnabled = realFNs.some(n=>n.enabled);
+
+      if(anyRealEnabled){
+        const demote = this.nodes.filter(n=>n.promoted);
+        if(demote.length){
+          demote.forEach(n=>{
+            n.role = n.roleBase;
+            n.promoted = false;
+            n.fwd.active = false;
+            n.fwd.cooldown = 0;
+          });
+          const demotedIds = demote.map(n=>n.id).join(", ");
+          this.logEvent("INFO", `Forwarder restored → demoted ${demotedIds} back to EN`);
+          this.onHud?.("Forwarder restored", `Forwarder restored → demoted ${demotedIds} back to EN`);
         }
+        this._promotionState = "OK";
+        return;
+      }
+
+      if(this.nodes.some(n=>n.promoted)){
+        this._promotionState = "PROMOTED";
+        return;
+      }
+
+      const eligible = this.nodes.filter(n=>{
+        if(n.role !== "EN") return false;
+        if(!n.enabled) return false;
+        if(n.energy <= 30) return false;
+        if(this.mriOn && this.mriAffected.has(n.id)) return false;
+        return this._neighbors(n.id).length >= 2;
+      });
+
+      if(!eligible.length){
+        if(this._promotionState !== "NO_ELIGIBLE"){
+          this.logEvent("WARN", "No forwarders available → no eligible EN for promotion");
+          this._promotionState = "NO_ELIGIBLE";
+        }
+        return;
+      }
+
+      const sinks = this._enabledSinks();
+      const rank = eligible
+        .map(n=>{
+          const degree = this._neighbors(n.id).length;
+          const energy = n.energy;
+          const sinkDist = sinks.length
+            ? Math.min(...sinks.map(s=>Math.hypot(n.x-s.x, n.y-s.y)))
+            : 9999;
+          return {id:n.id, degree, energy, sinkDist};
+        })
+        .sort((a,b)=>{
+          if(b.degree !== a.degree) return b.degree - a.degree;
+          if(b.energy !== a.energy) return b.energy - a.energy;
+          return a.sinkDist - b.sinkDist;
+        });
+
+      const pick = this._node(rank[0].id);
+      if(pick){
+        pick.promoted = true;
+        pick.role = "FN";
+        pick.fwd.cooldown = 0;
+        this.logEvent("WARN", `No forwarders available → promoted ${pick.id} as FN* relay`);
+        this.onHud?.("Auto-heal promotion", `No forwarders available → promoted ${pick.id} as FN* relay`);
+        this._promotionState = "PROMOTED";
       }
     }
 
@@ -1696,6 +1923,8 @@
       if(!n || !n.enabled) return null;
       if(n.role === "SN") return "GH";
       if(n.role === "FN"){
+        const p = n.attach?.parent;
+        if(p && this._node(p)?.enabled) return p;
         const sinks = this._enabledSinks();
         if(!sinks.length) return null;
         sinks.sort((a,b)=>{
@@ -1856,10 +2085,12 @@
       if(this.mode==="NORMAL" && this._degHold > 120){
         this.mode = "DEGRADED";
         this.onHud?.("Degraded/Emergency entered", "High interference persisted. DP is restricted to ALARM/CTRL; CP remains survivable.");
+        this.logEvent("WARN", "DEGRADED entered: CP preserved; DP only ALARM/CTRL");
       }
       if(this.mode==="DEGRADED" && this._recHold > 260){
         this.mode = "NORMAL";
         this.onHud?.("Recovered to Normal", "Interference stabilized. DP can resume progressively (still subject to RAC).");
+        this.logEvent("INFO", "Recovered NORMAL: DP resumed");
       }
     }
 
@@ -1882,12 +2113,9 @@
       // apply scenario events at this tick
       this._applyScenarioEvents();
 
-      if(this.interferenceSources?.length){
-        this.interferenceSources = this.interferenceSources.filter(s => !s.until || this.tick < s.until);
-      }
-
       // degraded mode logic
       this._updateDegradedMode();
+      this._updatePromotion();
 
       // join + per-node state updates
       for(const n of this.nodes){
@@ -1970,11 +2198,12 @@
         features: {...this.features},
         metrics: JSON.parse(JSON.stringify(this.metrics)),
         systemOn: this.systemOn,
+        mriOn: this.mriOn,
+        log: this.log.map(l=>({...l})),
         rooms: (this.rooms||[]).map(r=>({...r})),
-        interferenceSources: (this.interferenceSources||[]).map(s=>({...s})),
         gatewayOnline: this.gatewayOnline,
         nodes: this.nodes.map(n=>({
-          id:n.id, role:n.role, x:n.x, y:n.y,
+          id:n.id, role:n.role, roleBase:n.roleBase, promoted:n.promoted, x:n.x, y:n.y,
           battery:n.battery, energy:n.energy,
           enabled:n.enabled,
           join:n.join, radio:n.radio, rac:n.rac,
@@ -1989,6 +2218,7 @@
           fw:{...n.fw},
           queues:{cp:n.queues.cp.length, dp:n.queues.dp.length},
           parent:n.parent,
+          attach:{...n.attach},
           neighbors:[...n.neighbors]
         })),
         links: this.links.map(l=>({...l})),
@@ -2189,29 +2419,80 @@
         this.gRooms.appendChild(rect);
         this.gRooms.appendChild(label);
       }
+
+      const gh = (snap.nodes || []).find(n=>n.id==="GH");
+      if(gh){
+        const nurseLink = el("line", {
+          x1: gh.x, y1: gh.y, x2: 965, y2: 437,
+          stroke:"rgba(255,255,255,.30)",
+          "stroke-width":"2",
+          "stroke-dasharray":"6 6"
+        });
+        this.gRooms.appendChild(nurseLink);
+      }
+
+      const mriBox = el("rect", {
+        x: 760, y: 420, width: 70, height: 40,
+        rx:8, ry:8,
+        fill:"rgba(255,90,122,.10)",
+        stroke:"rgba(255,90,122,.45)",
+        "stroke-width":"2"
+      });
+      const mriLabel = el("text", {
+        x: 795, y: 445,
+        "text-anchor":"middle",
+        "font-size":"11",
+        fill:"rgba(255,90,122,.90)"
+      });
+      mriLabel.textContent = "MRI";
+      this.gRooms.appendChild(mriBox);
+      this.gRooms.appendChild(mriLabel);
+
+      const nurseIcon = el("rect", {
+        x: 930, y: 410, width: 70, height: 55,
+        rx:10, ry:10,
+        fill:"rgba(80,211,255,.08)",
+        stroke:"rgba(80,211,255,.35)",
+        "stroke-width":"2"
+      });
+      const nurseLabel = el("text", {
+        x: 965, y: 440,
+        "text-anchor":"middle",
+        "font-size":"11",
+        fill:"rgba(80,211,255,.85)"
+      });
+      nurseLabel.textContent = "Nurse";
+      const nurseLabel2 = el("text", {
+        x: 965, y: 455,
+        "text-anchor":"middle",
+        "font-size":"10",
+        fill:"rgba(80,211,255,.70)"
+      });
+      nurseLabel2.textContent = "Station";
+      this.gRooms.appendChild(nurseIcon);
+      this.gRooms.appendChild(nurseLabel);
+      this.gRooms.appendChild(nurseLabel2);
     }
 
     _renderInterf(snap){
       if(!this.gInterf) return;
       this.gInterf.innerHTML = "";
-      const src = snap.interferenceSources || [];
-      for(const s of src){
-        const c = el("circle", {
-          cx:s.x, cy:s.y, r:s.r,
-          fill:"rgba(255,90,122,.08)",
-          stroke:"rgba(255,90,122,.22)",
-          "stroke-width":"2"
-        });
-        const t = el("text", {
-          x:s.x, y:s.y,
-          "text-anchor":"middle",
-          "font-size":"12",
-          fill:"rgba(255,90,122,.85)"
-        });
-        t.textContent = "MRI EMI";
-        this.gInterf.appendChild(c);
-        this.gInterf.appendChild(t);
-      }
+      if(!snap.mriOn) return;
+      const c = el("circle", {
+        cx: 650, cy: 340, r: 160,
+        fill:"rgba(255,90,122,.10)",
+        stroke:"rgba(255,90,122,.30)",
+        "stroke-width":"2"
+      });
+      const t = el("text", {
+        x: 650, y: 340,
+        "text-anchor":"middle",
+        "font-size":"12",
+        fill:"rgba(255,90,122,.85)"
+      });
+      t.textContent = "MRI EMI";
+      this.gInterf.appendChild(c);
+      this.gInterf.appendChild(t);
     }
 
     _renderLinks(snap){
@@ -2272,13 +2553,17 @@
         } else {
           // RAC coloring on stroke for visibility (especially forwarders)
           let s = this._stroke(n);
+          if(n.promoted) s = "var(--promoted)";
           if(n.rac==="GUARDED") s = "rgba(255,209,102,.95)";
           if(n.rac==="CRITICAL") s = "rgba(255,59,59,.95)";
           els.core.setAttribute("stroke", s);
         }
 
         // ring1: forwarding active
-        els.ring1.setAttribute("stroke", (n.role==="FN" && n.fwd?.active && n.enabled) ? "rgba(168,255,99,.95)" : "rgba(255,255,255,0)");
+        let ringStroke = "rgba(255,255,255,0)";
+        if(n.promoted && n.enabled) ringStroke = "var(--promoted)";
+        if(n.role==="FN" && n.fwd?.active && n.enabled) ringStroke = "rgba(168,255,99,.95)";
+        els.ring1.setAttribute("stroke", ringStroke);
 
         // ring2: selected node
         const sel = (snap.selectedNodeId === n.id);
@@ -2287,6 +2572,8 @@
         // update label2 with energy/join state compactly
         const labs = this.labelEls.get(n.id);
         if(labs){
+          const roleLabel = n.promoted ? "FN*" : n.role;
+          labs.l1.textContent = `${n.id} — ${roleLabel}`;
           const e = n.battery ? `E=${n.energy.toFixed(0)}` : "E=—";
           const on = n.enabled ? "ON" : "OFF";
           labs.l2.textContent =
@@ -2512,21 +2799,21 @@
   });
 
   // MRI controls
-  $("btnMriOn").addEventListener("click", ()=>{
-    sim.interferenceSources = (sim.interferenceSources || []).filter(s=>s.id!=="MRI_UI");
-    sim.interferenceSources.push({
-      id:"MRI_UI",
-      x: 740,
-      y: 360,
-      r: 220,
-      strength: 0.85
-    });
-    sim.onHud("MRI ON", "Localized EMI zone active (Ward B).");
-  });
-
-  $("btnMriOff").addEventListener("click", ()=>{
-    sim.interferenceSources = (sim.interferenceSources || []).filter(s=>s.id!=="MRI_UI");
-    sim.onHud("MRI OFF", "EMI zone cleared.");
+  const mriToggle = $("btnMriToggle");
+  const syncMriBtn = () => {
+    mriToggle.textContent = sim.mriOn ? "MRI ON" : "MRI OFF";
+    mriToggle.classList.toggle("danger", sim.mriOn);
+  };
+  mriToggle.addEventListener("click", ()=>{
+    sim.mriOn = !sim.mriOn;
+    if(sim.mriOn){
+      sim.logEvent("WARN", "MRI ON → affected: B02,B03,B04 → rerouting");
+      sim.onHud("MRI ON", "MRI EMI active near Ward B beds. Affected nodes reroute away from interference.");
+    } else {
+      sim.logEvent("INFO", "MRI OFF → interference cleared → stabilizing");
+      sim.onHud("MRI OFF", "MRI EMI cleared. Links stabilize and drops reduce.");
+    }
+    syncMriBtn();
   });
 
   // Gateway toggle
@@ -2620,6 +2907,7 @@
     syncEmergencyNodes();
     syncPatientControls();
     gatewayToggle.checked = !!sim.gatewayOnline;
+    syncMriBtn();
   }
 
   function kpisFromSnap(snap){
@@ -2656,8 +2944,10 @@
     lines.push(`Energy: ${n.battery ? n.energy.toFixed(1) : "—"} | Battery: ${n.battery}`);
     lines.push(`Join: ${n.join} | Radio: ${n.radio}`);
     lines.push(`RAC: ${n.rac} | Queues: CP=${n.queues.cp}, DP=${n.queues.dp}`);
+    lines.push(`RoleBase: ${n.roleBase} | Promoted: ${n.promoted}`);
     lines.push(`Forwarding: ${n.role==="FN" ? (n.fwd.active ? `ACTIVE until ${n.fwd.until}` : `inactive (cooldown ${n.fwd.cooldown})`) : "n/a"}`);
-    lines.push(`Parent: ${n.parent || "—"} | Neighbors: ${(n.neighbors||[]).join(", ") || "—"}`);
+    lines.push(`Parent: ${n.parent || "—"} | Backups: ${(n.attach?.backups||[]).join(", ") || "—"} | Sink: ${n.attach?.sink || "—"}`);
+    lines.push(`Neighbors: ${(n.neighbors||[]).join(", ") || "—"}`);
     lines.push("");
     lines.push(`Channel IDs: ${n.ch.ids.join(", ")}`);
     lines.push(`Blacklisted: ${(n.ch.bl||[]).join(", ") || "—"}`);
@@ -2687,12 +2977,47 @@
     $("metrics").textContent = lines.join("\n");
   }
 
+  let logPaused = false;
+  function renderLog(snap){
+    if(logPaused) return;
+    const logLines = $("logLines");
+    const entries = (snap.log || []).slice(-10).reverse();
+    logLines.innerHTML = "";
+    for(const entry of entries){
+      const row = document.createElement("div");
+      row.className = "line";
+      const lvl = document.createElement("span");
+      lvl.className = `lvl ${entry.level}`;
+      lvl.textContent = entry.level;
+      const text = document.createElement("span");
+      text.textContent = `[t=${entry.t}] ${entry.msg}`;
+      row.appendChild(lvl);
+      row.appendChild(text);
+      logLines.appendChild(row);
+    }
+  }
+
+  $("btnLogClear").addEventListener("click", ()=>{
+    sim.log = [];
+    renderLog(sim.snapshot());
+  });
+  $("btnLogPause").addEventListener("click", ()=>{
+    logPaused = !logPaused;
+    $("btnLogPause").textContent = logPaused ? "Resume" : "Pause";
+  });
+  $("btnLogCopy").addEventListener("click", ()=>{
+    const entries = (sim.log || []).slice(-10).map(e=>`[t=${e.t}] ${e.msg}`);
+    navigator.clipboard?.writeText(entries.join("\n"));
+  });
+
   function tickUiAndRender(){
     const snap = sim.snapshot();
     kpisFromSnap(snap);
     updateGatewayStatus(snap);
     renderInspector(snap);
     renderMetrics(snap);
+    renderLog(snap);
+    syncMriBtn();
     renderer.render();
   }
 
