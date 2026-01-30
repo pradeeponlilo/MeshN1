@@ -1,0 +1,2176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Mesh Network Simulator (CP/DP, RAC, FWD, CH, SEC, FUOTA)</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#111a33;
+      --ink:#eaf0ff;
+      --muted:#a9b6df;
+
+      --cp:#50d3ff;      /* Control plane */
+      --dp:#a8ff63;      /* Data plane */
+      --alarm:#ff5a7a;   /* Alarm DP */
+      --warn:#ffd166;
+      --bad:#ff3b3b;
+      --good:#7CFFB2;
+      --link:#2a3564;
+      --card: rgba(255,255,255,.05);
+      --stroke: rgba(255,255,255,.12);
+    }
+
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background: radial-gradient(1000px 700px at 20% 10%, #16204a 0%, var(--bg) 55%) fixed;
+      color:var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      overflow:hidden;
+    }
+
+    .wrap{
+      display:grid;
+      grid-template-columns: 390px 1fr;
+      height:100%;
+    }
+    .panel{
+      background: linear-gradient(180deg, rgba(17,26,51,.94), rgba(10,14,28,.94));
+      border-right:1px solid rgba(255,255,255,.10);
+      padding:14px 14px 18px;
+      overflow:auto;
+    }
+
+    h1{margin:0 0 10px 0;font-size:16px;letter-spacing:.2px;}
+    .sub{color:var(--muted);font-size:12px;line-height:1.35;margin:0 0 12px 0;}
+
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .sp{height:10px;}
+    .divider{height:1px; background:rgba(255,255,255,.10); margin:12px 0;}
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    label{font-size:12px;color:var(--muted);}
+    select, input[type="range"], input[type="number"]{
+      width:100%;
+      margin-top:6px;
+      background: rgba(255,255,255,.06);
+      color: var(--ink);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      padding:8px;
+      outline:none;
+    }
+    input[type="range"]{padding:0;height:26px;}
+    .small{font-size:11px;color:var(--muted);}
+
+    button{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color:var(--ink);
+      padding:8px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:650;
+      font-size:12px;
+    }
+    button:hover{border-color: rgba(255,255,255,.28);}
+    button.primary{border-color: rgba(80,211,255,.55); box-shadow: 0 0 0 2px rgba(80,211,255,.12) inset;}
+    button.danger{border-color: rgba(255,90,122,.55); box-shadow: 0 0 0 2px rgba(255,90,122,.10) inset;}
+
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .kpi .k{font-size:11px;color:var(--muted);}
+    .kpi .v{font-size:13px;font-weight:750;margin-top:6px;}
+
+    .toggles{display:grid; grid-template-columns: 1fr 1fr; gap:10px;}
+    .toggle{
+      display:flex; gap:8px; align-items:flex-start;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;
+      padding:8px;
+    }
+    .toggle input{margin-top:3px;}
+    .toggle b{font-size:12px;}
+    .toggle .d{font-size:11px;color:var(--muted);line-height:1.25;}
+
+    .node-toggles{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px;
+    }
+    .node-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:6px 8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      font-size:12px;
+    }
+    .node-toggle span{color:var(--muted);}
+
+    .inspector pre{
+      margin:0;
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:11px;
+      color:rgba(233,240,255,.92);
+      line-height:1.35;
+    }
+
+    .stage{position:relative; height:100%;}
+    svg{width:100%; height:100%; display:block;}
+
+    .hud{
+      position:absolute;
+      left:14px; top:14px;
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      backdrop-filter: blur(6px);
+      border-radius:14px;
+      padding:10px 12px;
+      max-width: 560px;
+    }
+    .hud .t{font-size:13px;font-weight:800;margin-bottom:4px;}
+    .hud .d{font-size:12px;color:var(--muted);line-height:1.35;}
+    .legend{
+      position:absolute; right:14px; top:14px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+      backdrop-filter: blur(6px);
+      border-radius:14px;
+      padding:10px 12px;
+      max-width: 340px;
+    }
+    .legend .row{gap:8px; margin:4px 0;}
+    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .dot.cp{background:var(--cp)}
+    .dot.dp{background:var(--dp)}
+    .dot.alarm{background:var(--alarm)}
+    .dot.warn{background:var(--warn)}
+    .dot.bad{background:var(--bad)}
+    .shape{
+      width:10px;
+      height:10px;
+      display:inline-block;
+      background:var(--cp);
+    }
+    .shape.diamond{transform:rotate(45deg); border-radius:2px;}
+    .shape.circle{border-radius:999px; background:var(--dp);}
+    .shape.triangle{
+      width:0;height:0;
+      border-left:6px solid transparent;
+      border-right:6px solid transparent;
+      border-bottom:10px solid var(--alarm);
+      background:none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <aside class="panel">
+      <h1>Mesh Network Simulator</h1>
+      <p class="sub">
+        Interactive CP/DP mesh explainer: RAC gating, ephemeral forwarding windows, channel scoring/blacklist,
+        security trust & key lifecycle, FUOTA campaign, degraded/emergency behavior.
+      </p>
+
+      <div class="card">
+        <label>Scenario</label>
+        <select id="scSelect"></select>
+        <div class="small" id="scHelp" style="margin-top:6px"></div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="btnPlay">Play</button>
+          <button id="btnPause">Pause</button>
+          <button id="btnStep">Step</button>
+          <button id="btnReset">Reset</button>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button id="btnStress">Inject Congestion</button>
+          <button class="danger" id="btnToggleDeg">Toggle Degraded</button>
+          <button id="btnStartFuota">Start FUOTA</button>
+        </div>
+
+        <div class="sp"></div>
+        <label>Speed (ticks / frame)</label>
+        <input id="speed" type="range" min="1" max="8" step="1" value="1"/>
+        <div class="small">Higher = faster simulation (less smooth packet motion).</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <label>System Power</label>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="btnSystemPower">System ON</button>
+          <span class="small" id="systemState">All communications enabled.</span>
+        </div>
+        <div class="sp"></div>
+        <label>Emergency Message</label>
+        <select id="emergencyNode"></select>
+        <div class="row" style="margin-top:8px">
+          <button class="danger" id="btnEmergency">Send Emergency</button>
+        </div>
+        <div class="small" style="margin-top:6px">Emergency messages are ALARM DP and shown as triangles.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <label>Node Power</label>
+        <div class="small" style="margin-top:6px">Toggle nodes on/off to observe healing and reroutes.</div>
+        <div class="sp"></div>
+        <div class="node-toggles" id="nodeToggles"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <div class="kpis">
+          <div class="kpi">
+            <div class="k">Mode</div>
+            <div class="v" id="kMode">—</div>
+          </div>
+          <div class="kpi">
+            <div class="k">Tick</div>
+            <div class="v" id="kTick">—</div>
+          </div>
+          <div class="kpi">
+            <div class="k">Delivered (CP/DP)</div>
+            <div class="v" id="kDel">—</div>
+          </div>
+          <div class="kpi">
+            <div class="k">Drops</div>
+            <div class="v" id="kDrop">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <label>Knobs</label>
+        <div class="sp"></div>
+
+        <label>Interference (PER driver)</label>
+        <input id="knInterf" type="range" min="0" max="1" step="0.01" value="0.10"/>
+        <div class="small" id="knInterfV">0.10</div>
+
+        <div class="sp"></div>
+        <label>Traffic load (DP)</label>
+        <input id="knTraffic" type="range" min="0" max="5" step="0.1" value="1.0"/>
+        <div class="small" id="knTrafficV">1.0</div>
+
+        <div class="sp"></div>
+        <label>Duty-cycle target</label>
+        <input id="knDuty" type="range" min="0.01" max="0.30" step="0.01" value="0.10"/>
+        <div class="small" id="knDutyV">0.10</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <label>Features</label>
+        <div class="sp"></div>
+        <div class="toggles">
+          <div class="toggle"><input id="ftCpdp" type="checkbox" checked/><div><b>CP/DP</b><div class="d">Dual-plane traffic model</div></div></div>
+          <div class="toggle"><input id="ftRac" type="checkbox" checked/><div><b>RAC</b><div class="d">Receiver admission control</div></div></div>
+          <div class="toggle"><input id="ftFwd" type="checkbox" checked/><div><b>FWD</b><div class="d">Ephemeral forwarding windows</div></div></div>
+          <div class="toggle"><input id="ftCh" type="checkbox" checked/><div><b>CH</b><div class="d">Channel scoring/blacklist</div></div></div>
+          <div class="toggle"><input id="ftSec" type="checkbox" checked/><div><b>SEC</b><div class="d">Trust/key lifecycle</div></div></div>
+          <div class="toggle"><input id="ftFuota" type="checkbox" checked/><div><b>FUOTA</b><div class="d">Firmware campaign model</div></div></div>
+          <div class="toggle"><input id="ftDeg" type="checkbox" checked/><div><b>DEG</b><div class="d">Emergency mode logic</div></div></div>
+          <div class="toggle"><input id="ftExplain" type="checkbox"/><div><b>Explain</b><div class="d">Show drop/blacklist overlays</div></div></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card inspector">
+        <label>Node Inspector</label>
+        <div class="small">Click a node on the diagram.</div>
+        <div class="sp"></div>
+        <pre id="inspector">No node selected.</pre>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <label>Metrics</label>
+        <div class="sp"></div>
+        <pre id="metrics" style="margin:0;white-space:pre-wrap;font-size:11px;color:rgba(233,240,255,.92);line-height:1.35">—</pre>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="hud">
+        <div class="t" id="hudTitle">Ready</div>
+        <div class="d" id="hudDesc">Load a scenario and press Play. Click nodes to inspect.</div>
+      </div>
+
+      <div class="legend">
+        <div class="row"><span class="shape diamond"></span><span class="small">CP packets (diamond)</span></div>
+        <div class="row"><span class="shape circle"></span><span class="small">DP packets (circle)</span></div>
+        <div class="row"><span class="shape triangle"></span><span class="small">Emergency ALARM (triangle)</span></div>
+        <div class="row"><span class="dot warn"></span><span class="small">RAC = GUARDED</span></div>
+        <div class="row"><span class="dot bad"></span><span class="small">RAC = CRITICAL</span></div>
+        <div class="small" style="margin-top:6px">
+          Click nodes for details. Enable <b>Explain</b> to see drop reasons / blacklists.
+        </div>
+      </div>
+
+      <svg id="svg" viewBox="0 0 1100 650" aria-label="mesh diagram">
+        <g id="gLinks"></g>
+        <g id="gPackets"></g>
+        <g id="gDrops"></g>
+        <g id="gNodes"></g>
+        <g id="gLabels"></g>
+      </svg>
+    </main>
+  </div>
+
+<script>
+// --- SCENARIOS MODULE ---
+(function(){
+  const S = [];
+
+  const add = (id, name, help, duration, events) => {
+    S.push({ id, name, help, duration, events });
+  };
+
+  add(
+    "baseline_join",
+    "Baseline: Join → CP stable → DP telemetry",
+    "Shows bounded join, CP stabilization gate, then DP telemetry.",
+    2200,
+    [
+      {t:0, type:"SET_HUD", title:"Baseline", desc:"System starts stable. A new node will join via a chosen parent; DP turns on after CP stability gate."},
+      {t:60, type:"JOIN_NODE", nodeId:"Enew", via:"F2"},
+      {t:120, type:"SET_TRAFFIC", value:1.1},
+      {t:140, type:"SET_INTERFERENCE", value:0.12},
+      {t:400, type:"SET_HUD", title:"DP enabled progressively", desc:"After CP is stable, DP telemetry begins. Forwarders may open ephemeral forwarding windows."},
+      {t:900, type:"SET_TRAFFIC", value:1.6},
+      {t:1400, type:"SET_TRAFFIC", value:1.0},
+    ]
+  );
+
+  add(
+    "rac_congestion",
+    "Congestion: RAC Nominal → Guarded → Critical",
+    "Increases DP load + interference so RAC drops low priority first.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"RAC Demo", desc:"Traffic and interference will increase. Receiver Admission Control will enter Guarded/Critical and drop DP selectively."},
+      {t:40, type:"JOIN_NODE", nodeId:"Enew", via:"F2"},
+      {t:100, type:"SET_TRAFFIC", value:1.4},
+      {t:460, type:"SET_TRAFFIC", value:3.8},
+      {t:520, type:"SET_INTERFERENCE", value:0.55},
+      {t:750, type:"SET_INTERFERENCE", value:0.72},
+      {t:920, type:"SET_HUD", title:"Critical protection", desc:"Under sustained pressure, RAC may go CRITICAL: allow CP + ALARM/CTRL; suppress bulk/telemetry."},
+      {t:1300, type:"SET_TRAFFIC", value:1.6},
+      {t:1400, type:"SET_INTERFERENCE", value:0.22},
+      {t:1700, type:"SET_HUD", title:"Recovery", desc:"As interference and load drop, RAC returns toward NOMINAL, DP resumes."},
+    ]
+  );
+
+  add(
+    "channel_blacklist",
+    "Channel: scoring & blacklist lifecycle",
+    "Forces a channel blacklist and shows rehabilitate after cooldown.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"Channel scoring", desc:"We will blacklist a channel on a node and raise interference to worsen PER; scores recover after cooldown."},
+      {t:50, type:"SET_INTERFERENCE", value:0.25},
+      {t:200, type:"BLACKLIST_CHANNEL", nodeId:"F1", ch:15},
+      {t:380, type:"SET_INTERFERENCE", value:0.60},
+      {t:700, type:"SET_INTERFERENCE", value:0.40},
+      {t:1050, type:"SET_INTERFERENCE", value:0.18},
+      {t:1400, type:"CLEAR_BLACKLISTS"},
+      {t:1500, type:"SET_HUD", title:"Blacklist cleared", desc:"Cooldown/rehabilitation should be visible in scores; routing continues on remaining channels."},
+    ]
+  );
+
+  add(
+    "security_rekey",
+    "Security: suspect → rekey → trust OK",
+    "Simulates key compromise and rekey attempts on CP.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"Security lifecycle", desc:"We will mark a node's key as compromised; it becomes SUSPECT and will attempt rekey/attestation."},
+      {t:120, type:"COMPROMISE_KEY", nodeId:"E1"},
+      {t:180, type:"SET_INTERFERENCE", value:0.20},
+      {t:600, type:"SET_HUD", title:"Rekey attempts", desc:"Rekey is simulated periodically; trust returns to OK when successful. Quarantine can drop DP."},
+      {t:1100, type:"COMPROMISE_KEY", nodeId:"E2"},
+      {t:1500, type:"SET_INTERFERENCE", value:0.12},
+    ]
+  );
+
+  add(
+    "fuota_campaign",
+    "FUOTA: schedule → transfer → verify → commit",
+    "Starts a firmware campaign; progress depends on duty + RAC + interference.",
+    2600,
+    [
+      {t:0, type:"SET_HUD", title:"FUOTA campaign", desc:"Campaign starts. Bulk chunks are sent under duty-cycle and RAC constraints. Increase interference to see retries/rollback risk."},
+      {t:80, type:"START_FUOTA", version:"1.1.0"},
+      {t:120, type:"SET_TRAFFIC", value:1.4},
+      {t:500, type:"SET_INTERFERENCE", value:0.40},
+      {t:900, type:"SET_INTERFERENCE", value:0.70},
+      {t:1300, type:"SET_INTERFERENCE", value:0.22},
+      {t:1600, type:"SET_HUD", title:"Commit", desc:"Nodes commit if they have enough energy and transfer completed. Low energy or too many retries can rollback."},
+    ]
+  );
+
+  add(
+    "degraded_emergency",
+    "Emergency: Degraded mode + recovery",
+    "Sustained interference triggers degraded mode; DP is restricted to ALARM/CTRL.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"Degraded/Emergency", desc:"High interference persists. Simulator will auto-enter DEGRADED; CP remains; DP is restricted to ALARM/CTRL."},
+      {t:60, type:"SET_TRAFFIC", value:2.2},
+      {t:240, type:"SET_INTERFERENCE", value:0.78},
+      {t:900, type:"SET_INTERFERENCE", value:0.75},
+      {t:1300, type:"SET_INTERFERENCE", value:0.20},
+      {t:1600, type:"SET_HUD", title:"Recovery gate", desc:"After stability holds, simulator returns to NORMAL and DP resumes subject to RAC."},
+    ]
+  );
+
+  window.MeshScenarios = S;
+})();
+</script>
+
+<script>
+// --- SIMULATOR CORE MODULE ---
+(function(){
+  const rand = (seedObj) => {
+    // small deterministic PRNG (LCG) so scenario playback feels stable
+    seedObj.v = (seedObj.v * 1664525 + 1013904223) >>> 0;
+    return (seedObj.v / 0xffffffff);
+  };
+
+  const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+
+  const CP = "CP";
+  const DP = "DP";
+  const DPCLS = { ALARM:"ALARM", TELEMETRY:"TELEMETRY", BULK:"BULK", CTRL:"CTRL" };
+
+  const JOIN = { OFF:"OFF", SCAN:"SCAN", SELECT:"SELECT", REQ:"REQ", ACK:"ACK", STABLE:"STABLE", DP_ON:"DP_ON" };
+  const RADIO = { SLEEP:"SLEEP", WAKE:"WAKE", RX:"RX", TX:"TX", BACKOFF:"BACKOFF" };
+  const RAC = { NOMINAL:"NOMINAL", GUARDED:"GUARDED", CRITICAL:"CRITICAL" };
+  const TRUST = { OK:"OK", SUSPECT:"SUSPECT", QUARANTINE:"QUARANTINE" };
+  const FUOTA = { IDLE:"IDLE", SCHEDULED:"SCHEDULED", TRANSFER:"TRANSFER", VERIFY:"VERIFY", COMMIT:"COMMIT", DONE:"DONE", ROLLBACK:"ROLLBACK" };
+
+  function nowId(){ return crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"_"+Math.random()); }
+
+  class MeshSim{
+    constructor(){
+      this.seed = {v: 123456789};
+      this.tick = 0;
+      this.running = false;
+      this.speed = 1;
+      this.systemOn = true;
+
+      // knobs (UI controlled)
+      this.knobs = {
+        interference: 0.10,     // 0..1 affects PER
+        traffic: 1.0,           // 0..5 scales DP generation
+        dutyTarget: 0.10,       // 0.01..0.30
+        energyBudget: 150,      // 50..300 base mAh-ish
+      };
+
+      // feature toggles
+      this.features = {
+        cpdp: true,
+        rac: true,
+        fwd: true,
+        ch: true,
+        sec: true,
+        fuota: true,
+        deg: true,
+        explain: false,
+      };
+
+      // mode
+      this.mode = "NORMAL"; // NORMAL | DEGRADED (global)
+
+      // scenario
+      this.scenario = null;
+      this.scEvents = [];
+      this.scIndex = 0;
+      this.scDuration = 0;
+
+      // topology
+      this.nodes = [];
+      this.links = []; // {a,b,dist}
+      this.packets = []; // in-flight visuals + delivery model
+      this.drops = [];   // recent drops for explain overlays
+
+      // metrics
+      this.metrics = {
+        sentCP:0, sentDP:0,
+        delCP:0, delDP:0,
+        drop:0,
+        dropByReason:{},
+        delByClass:{ALARM:0, TELEMETRY:0, BULK:0, CTRL:0},
+        avgLatency:0,
+        latCount:0
+      };
+
+      // callbacks
+      this.onHud = (t,d)=>{};
+      this.onSelectNode = (id)=>{};
+      this.selectedNodeId = null;
+
+      this._initTopology();
+    }
+
+    _initTopology(){
+      // Small mesh; extend as needed
+      // Roles: SN (sink), GH (gateway host), FN (forwarder), EN (endpoint)
+      const baseE = this.knobs.energyBudget;
+
+      this.nodes = [
+        this._mkNode("SN","SN", 860,170, baseE*2, false),
+        this._mkNode("GH","GH", 1030,95, baseE*999, false), // outside mesh
+        this._mkNode("F1","FN", 620,240, baseE*1.2, true),
+        this._mkNode("F2","FN", 540,450, baseE*1.2, true),
+        this._mkNode("E1","EN", 260,280, baseE, true),
+        this._mkNode("E2","EN", 270,480, baseE, true),
+        this._mkNode("E3","EN", 410,150, baseE, true),
+        this._mkNode("Enew","EN", 130,370, baseE, true),
+      ];
+
+      // default: Enew is not part of mesh until scenario JOIN_NODE
+      this._node("Enew").join = JOIN.OFF;
+
+      const L = (a,b)=>this._addLink(a,b);
+      this.links = [];
+      L("SN","F1");
+      L("F1","E3");
+      L("F1","E1");
+      L("F2","E2");
+      L("F2","E1");
+      L("F1","F2");
+      L("SN","GH"); // host uplink (not mesh-controlled)
+    }
+
+    _mkNode(id, role, x,y, energy, battery){
+      const chCount = 3; // keep small (simulate channel set); values are "channel ids"
+      const channels = [11,15,20];
+
+      return {
+        id, role, x,y,
+        battery: !!battery,
+        energy: energy,
+        duty: 0, // observed duty fraction
+        dutyBudget: 0, // accumulator
+        enabled: true,
+        join: (role==="GH") ? JOIN.DP_ON : (role==="SN"||role==="FN"||role==="EN" ? JOIN.STABLE : JOIN.SCAN),
+        radio: RADIO.SLEEP,
+        rac: RAC.NOMINAL,
+        stress: 0,
+        queues: {cp:[], dp:[]},
+        neighbors: [], // bounded
+        parent: null,  // upstream choice
+        fwd: {active:false, until:0, cooldown:0},
+        ch: {
+          ids: channels,
+          score: Object.fromEntries(channels.map(c=>[c,0.2])),
+          bl: new Set(),  // blacklisted channels
+          blUntil: {},    // cooldown per channel
+        },
+        sec: {
+          trust: TRUST.OK,
+          keyEpoch: 1,
+          keyExpires: 2000, // ticks from start; rotated later
+          compromised: false
+        },
+        fw: {
+          version: "1.0.0",
+          target: null,
+          state: FUOTA.IDLE,
+          progress: 0, // 0..1
+          lastChunkAt: 0,
+          retries: 0
+        }
+      };
+    }
+
+    _node(id){ return this.nodes.find(n=>n.id===id); }
+
+    _addLink(a,b){
+      const A=this._node(a), B=this._node(b);
+      const dx=A.x-B.x, dy=A.y-B.y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      this.links.push({a,b,dist});
+    }
+
+    reset(){
+      this.tick = 0;
+      this.running = false;
+      this.mode = "NORMAL";
+      this.scIndex = 0;
+      this.systemOn = true;
+      this.packets = [];
+      this.drops = [];
+      this.metrics = {
+        sentCP:0, sentDP:0,
+        delCP:0, delDP:0,
+        drop:0,
+        dropByReason:{},
+        delByClass:{ALARM:0, TELEMETRY:0, BULK:0, CTRL:0},
+        avgLatency:0,
+        latCount:0
+      };
+      this._initTopology();
+      if (this.onHud) this.onHud("Ready","Load a scenario, then Play. Click nodes to inspect.");
+    }
+
+    loadScenario(sc){
+      this.reset();
+      this.scenario = sc;
+      this.scEvents = (sc?.events||[]).slice().sort((a,b)=>a.t-b.t);
+      this.scDuration = sc?.duration || 2000;
+      this.scIndex = 0;
+    }
+
+    setSelectedNode(id){
+      this.selectedNodeId = id;
+      if (this.onSelectNode) this.onSelectNode(id);
+    }
+
+    setSystemOn(isOn){
+      this.systemOn = !!isOn;
+      if(!this.systemOn){
+        this.packets = [];
+        this.nodes.forEach(n=>{
+          n.queues.cp.length = 0;
+          n.queues.dp.length = 0;
+        });
+      }
+    }
+
+    setNodePower(id, enabled){
+      const n = this._node(id);
+      if(!n) return;
+      n.enabled = !!enabled;
+      if(!n.enabled){
+        n.queues.cp.length = 0;
+        n.queues.dp.length = 0;
+        n.radio = RADIO.SLEEP;
+        n.fwd.active = false;
+        n.join = JOIN.OFF;
+        n.parent = null;
+        n.neighbors = [];
+      } else {
+        if(n.role === "SN" || n.role === "GH"){
+          n.join = JOIN.DP_ON;
+        } else if(n.role === "FN"){
+          n.join = JOIN.STABLE;
+        } else {
+          n.join = JOIN.SCAN;
+        }
+        n.sec.trust = TRUST.OK;
+      }
+    }
+
+    sendEmergencyFrom(nodeId){
+      if(!this.systemOn) return;
+      const n = this._node(nodeId);
+      if(!n || !n.enabled) return;
+      if(n.join === JOIN.OFF) return;
+
+      const dst = this._routeDestinationFor(nodeId);
+      if(!dst) return;
+      this._enqueue(n, DP, this._mkPkt(DP, DPCLS.ALARM, nodeId, dst, {speed:0.032, ttl:140}));
+      this.onHud?.("Emergency dispatched", `${nodeId} sent an ALARM packet toward ${dst}. Forwarders adapt to prioritize ALARM traffic.`);
+    }
+
+    // -----------------------------------------------------------
+    // Event handling (scenario)
+    // -----------------------------------------------------------
+    _applyScenarioEvents(){
+      while (this.scIndex < this.scEvents.length && this.scEvents[this.scIndex].t === this.tick){
+        const ev = this.scEvents[this.scIndex++];
+        switch(ev.type){
+          case "SET_HUD":
+            this.onHud?.(ev.title||"", ev.desc||"");
+            break;
+          case "JOIN_NODE":
+            this._startJoin(ev.nodeId, ev.via);
+            break;
+          case "SET_TRAFFIC":
+            this.knobs.traffic = clamp(ev.value,0,5);
+            break;
+          case "SET_INTERFERENCE":
+            this.knobs.interference = clamp(ev.value,0,1);
+            break;
+          case "TOGGLE_DEGRADED":
+            this.mode = ev.value ? "DEGRADED" : "NORMAL";
+            break;
+          case "START_FUOTA":
+            this._startFuota(ev.version || "1.1.0");
+            break;
+          case "COMPROMISE_KEY":
+            this._compromiseKey(ev.nodeId);
+            break;
+          case "BLACKLIST_CHANNEL":
+            this._blacklistChannel(ev.nodeId, ev.ch);
+            break;
+          case "CLEAR_BLACKLISTS":
+            this.nodes.forEach(n=>{
+              if(n.ch?.bl){ n.ch.bl.clear(); n.ch.blUntil = {}; }
+            });
+            break;
+        }
+      }
+    }
+
+    _startJoin(nodeId, via){
+      const n = this._node(nodeId);
+      if(!n || !n.enabled) return;
+      n.join = JOIN.SCAN;
+      n.parent = null;
+      n.neighbors = [];
+      // seed: prefer "via"
+      n._joinVia = via || null;
+      this.onHud?.("Join initiated", `${nodeId} begins passive scan; bounded neighbor set; localized join handshake to selected parent.`);
+    }
+
+    _startFuota(targetVersion){
+      if(!this.features.fuota) return;
+      // schedule for all battery nodes except GH
+      this.nodes.forEach(n=>{
+        if(n.role==="GH") return;
+        if(!n.battery) return;
+        if(!n.enabled) return;
+        n.fw.target = targetVersion;
+        n.fw.state = FUOTA.SCHEDULED;
+        n.fw.progress = 0;
+        n.fw.retries = 0;
+      });
+      this.onHud?.("FUOTA scheduled", `Firmware target ${targetVersion} scheduled. Nodes will transfer chunks (DP bulk) under duty-cycle + RAC constraints.`);
+    }
+
+    _compromiseKey(nodeId){
+      const n=this._node(nodeId); if(!n || !n.enabled) return;
+      if(!this.features.sec) return;
+      n.sec.compromised = true;
+      n.sec.trust = TRUST.SUSPECT;
+      this.onHud?.("Key compromise simulated", `${nodeId} marked SUSPECT. Rekey/attestation will be triggered via CP.`);
+    }
+
+    _blacklistChannel(nodeId, ch){
+      const n=this._node(nodeId); if(!n || !n.enabled) return;
+      if(!this.features.ch) return;
+      n.ch.bl.add(ch);
+      n.ch.blUntil[ch] = this.tick + 800;
+      this.onHud?.("Channel blacklisted", `${nodeId} blacklisted ch${ch} until tick ${n.ch.blUntil[ch]}.`);
+    }
+
+    // -----------------------------------------------------------
+    // Packet mechanics (visual + delivery model)
+    // -----------------------------------------------------------
+    _mkPkt(plane, cls, src, dst, opts={}){
+      return {
+        id: nowId(),
+        plane, cls,
+        src, dst,
+        createdAt: this.tick,
+        ttl: opts.ttl ?? 160,
+        hop: 0,
+        size: opts.size ?? (plane===CP ? 20 : (cls===DPCLS.BULK?180:40)),
+        channel: opts.channel ?? null,
+        // movement in renderer uses src/dst coordinates; we store progress 0..1
+        p: 0,
+        speed: opts.speed ?? (plane===CP?0.020:0.025)
+      };
+    }
+
+    _enqueue(node, plane, pkt){
+      if(!node || !node.enabled || !this.systemOn) return;
+      if(plane===CP) node.queues.cp.push(pkt);
+      else node.queues.dp.push(pkt);
+    }
+
+    _sendFromQueue(node, plane){
+      if(!node || !node.enabled || !this.systemOn) return null;
+      const q = (plane===CP) ? node.queues.cp : node.queues.dp;
+      if(q.length===0) return null;
+
+      // duty-cycle budget: allow limited TX per tick
+      const txBudget = this.knobs.dutyTarget;
+      node.dutyBudget += txBudget;
+
+      // each TX consumes ~0.04 budget (tuned for visuals)
+      if(node.dutyBudget < 0.04) return null;
+
+      const pkt = q.shift();
+      node.dutyBudget -= 0.04;
+
+      // set channel (if enabled)
+      pkt.channel = this._chooseChannel(node);
+
+      // packet enters in-flight pool
+      this.packets.push(pkt);
+      if(pkt.plane===CP) this.metrics.sentCP++;
+      else this.metrics.sentDP++;
+
+      // energy drain
+      if(node.battery) node.energy = Math.max(0, node.energy - 0.015*(pkt.size/40));
+
+      return pkt;
+    }
+
+    _chooseChannel(node){
+      const ids = node.ch.ids;
+      if(!this.features.ch) return ids[0];
+
+      // expire blacklist entries
+      for(const ch of Object.keys(node.ch.blUntil)){
+        const until = node.ch.blUntil[ch];
+        if(this.tick >= until){
+          node.ch.bl.delete(Number(ch));
+          delete node.ch.blUntil[ch];
+          // heal score a bit
+          node.ch.score[ch] = Math.max(0.1, (node.ch.score[ch] ?? 0.2) - 0.05);
+        }
+      }
+
+      // pick lowest score among non-blacklisted (lower is better here)
+      let best = null;
+      let bestScore = 9e9;
+      for(const ch of ids){
+        if(node.ch.bl.has(ch)) continue;
+        const s = node.ch.score[ch] ?? 0.2;
+        if(s < bestScore){ bestScore = s; best = ch; }
+      }
+      return best ?? ids[0];
+    }
+
+    _packetDeliverOrDrop(pkt){
+      // TTL
+      pkt.ttl--;
+      if(pkt.ttl<=0) return this._drop(pkt, "TTL");
+
+      // progress movement (renderer reads pkt.p)
+      pkt.p = Math.min(1, pkt.p + pkt.speed);
+
+      if(pkt.p < 1) return null;
+
+      // arrived at dst: apply receiver admission + PER
+      const dst = this._node(pkt.dst);
+      if(!dst || !dst.enabled) return this._drop(pkt, "NODE_OFF");
+
+      // GH is host uplink, always accept
+      if(dst.role!=="GH"){
+        // Receiver Admission Control
+        if(pkt.plane===DP && this.features.rac){
+          if(!this._dpAccepted(dst, pkt.cls)){
+            return this._drop(pkt, `RAC_${dst.rac}_${pkt.cls}`);
+          }
+        }
+
+        // Security quarantine drops (coarse)
+        if(this.features.sec && dst.sec?.trust === TRUST.QUARANTINE && pkt.plane===DP){
+          return this._drop(pkt, "SEC_QUARANTINE");
+        }
+
+        // PER probability
+        const per = this._estimatePER(pkt.src, pkt.dst, pkt.channel);
+        const r = rand(this.seed);
+        if(r < per){
+          // update channel score if enabled
+          this._channelObserve(dst, pkt.channel, false);
+          return this._drop(pkt, `PER_ch${pkt.channel}`);
+        }
+        this._channelObserve(dst, pkt.channel, true);
+      }
+
+      // delivered
+      this._deliver(pkt);
+      return "DELIVERED";
+    }
+
+    _estimatePER(srcId, dstId, ch){
+      // coarse model: base PER from interference + distance factor
+      const A=this._node(srcId), B=this._node(dstId);
+      if(!A||!B) return 0.2;
+
+      const dx=A.x-B.x, dy=A.y-B.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+
+      // distance -> PER bump
+      const dFactor = clamp((dist-120)/700, 0, 1);
+
+      // channel score impacts PER slightly
+      let chPenalty = 0;
+      if(this.features.ch && A?.ch?.score){
+        const s = A.ch.score[ch] ?? 0.2;
+        chPenalty = clamp(s,0,1)*0.25;
+      }
+
+      const per = clamp(0.02 + this.knobs.interference*0.55 + dFactor*0.25 + chPenalty, 0, 0.95);
+      return per;
+    }
+
+    _channelObserve(node, ch, ok){
+      if(!this.features.ch) return;
+      if(ch==null) return;
+      // EMA score: higher means worse
+      const prev = node.ch.score[ch] ?? 0.2;
+      const sample = ok ? 0.0 : 1.0;
+      const next = prev*0.90 + sample*0.10;
+      node.ch.score[ch] = next;
+
+      // auto-blacklist if persistently bad
+      if(next > 0.55 && !node.ch.bl.has(ch)){
+        node.ch.bl.add(ch);
+        node.ch.blUntil[ch] = this.tick + 700;
+        if(this.features.explain){
+          this.drops.push({t:this.tick, x:node.x, y:node.y-28, msg:`BL ch${ch} (score ${next.toFixed(2)})`});
+        }
+      }
+    }
+
+    _deliver(pkt){
+      // update metrics
+      const lat = (this.tick - pkt.createdAt);
+      this.metrics.avgLatency = (this.metrics.avgLatency*this.metrics.latCount + lat) / (this.metrics.latCount+1);
+      this.metrics.latCount++;
+
+      if(pkt.plane===CP) this.metrics.delCP++;
+      else{
+        this.metrics.delDP++;
+        this.metrics.delByClass[pkt.cls] = (this.metrics.delByClass[pkt.cls]||0)+1;
+      }
+
+      // hop-by-hop forwarding simulation
+      if(pkt.plane===DP){
+        if(pkt.dst==="F1"){
+          this._maybeForwardFrom("F1", pkt);
+        }else if(pkt.dst==="F2"){
+          this._maybeForwardFrom("F2", pkt);
+        }else if(pkt.dst==="SN"){
+          // delivered to sink - may generate uplink to GH as CP status
+          if(this.features.cpdp && (this.tick%80===0)){
+            this._enqueue(this._node("SN"), CP, this._mkPkt(CP, null, "SN","GH", {speed:0.018}));
+          }
+        }
+      }
+
+      // FUOTA: if packet is "BULK" and FUOTA active, increment progress at destination
+      if(this.features.fuota && pkt.plane===DP && pkt.cls===DPCLS.BULK){
+        const n = this._node(pkt.dst);
+        if(n && n.fw.state===FUOTA.TRANSFER){
+          n.fw.progress = clamp(n.fw.progress + 0.015, 0, 1);
+          n.fw.lastChunkAt = this.tick;
+        }
+      }
+
+      // remove from in-flight
+      this.packets = this.packets.filter(p=>p.id!==pkt.id);
+    }
+
+    _drop(pkt, reason){
+      this.metrics.drop++;
+      this.metrics.dropByReason[reason] = (this.metrics.dropByReason[reason]||0)+1;
+
+      if(this.features.explain){
+        const A=this._node(pkt.dst) || this._node(pkt.src);
+        const x = A ? A.x : 100;
+        const y = A ? A.y-30 : 50;
+        this.drops.push({t:this.tick, x, y, msg:`DROP: ${reason}`});
+        // cap overlay list
+        if(this.drops.length>60) this.drops.splice(0, this.drops.length-60);
+      }
+
+      this.packets = this.packets.filter(p=>p.id!==pkt.id);
+      return "DROPPED";
+    }
+
+    // -----------------------------------------------------------
+    // Admission control / RAC
+    // -----------------------------------------------------------
+    _updateRac(node){
+      if(!this.features.rac) { node.rac = RAC.NOMINAL; return; }
+      // stress from queue pressure + energy low + interference
+      const q = node.queues.dp.length + node.queues.cp.length*0.3;
+      let s = node.stress;
+      s = s*0.92 + q*0.06 + this.knobs.interference*0.08;
+      if(node.battery && node.energy < 20) s += 0.18;
+      node.stress = clamp(s,0,1);
+
+      if(node.stress >= 0.75) node.rac = RAC.CRITICAL;
+      else if(node.stress >= 0.40) node.rac = RAC.GUARDED;
+      else node.rac = RAC.NOMINAL;
+    }
+
+    _dpAccepted(node, cls){
+      // degraded: allow DP only ALARM/CTRL
+      if(this.features.deg && this.mode==="DEGRADED"){
+        return (cls===DPCLS.ALARM || cls===DPCLS.CTRL);
+      }
+
+      if(node.rac===RAC.NOMINAL) return true;
+      if(node.rac===RAC.GUARDED){
+        return (cls===DPCLS.ALARM || cls===DPCLS.CTRL || cls===DPCLS.TELEMETRY);
+      }
+      // CRITICAL
+      return (cls===DPCLS.ALARM || cls===DPCLS.CTRL);
+    }
+
+    // -----------------------------------------------------------
+    // Forwarding window lifecycle (ephemeral)
+    // -----------------------------------------------------------
+    _updateForwarding(node){
+      if(!this.features.fwd) { node.fwd.active=false; return; }
+      if(node.role!=="FN") return;
+
+      // cooldown
+      if(node.fwd.cooldown>0) node.fwd.cooldown--;
+
+      // eligibility: energy + queue pressure (if overloaded, don't forward)
+      const energyOk = (!node.battery) || node.energy > 25;
+      const pressureOk = node.queues.dp.length < 10;
+      const eligible = energyOk && pressureOk;
+
+      // If active, expire
+      if(node.fwd.active && this.tick >= node.fwd.until){
+        node.fwd.active = false;
+        node.fwd.cooldown = 180;
+      }
+
+      // If inactive and eligible and not in cooldown, probabilistically open
+      if(!node.fwd.active && eligible && node.fwd.cooldown===0){
+        const r = rand(this.seed);
+        if(r < 0.018){ // open rarely so it is visible
+          node.fwd.active = true;
+          node.fwd.until = this.tick + 260;
+        }
+      }
+    }
+
+    _maybeForwardFrom(fnId, pkt){
+      const fn = this._node(fnId);
+      if(!fn || fn.role!=="FN" || !fn.enabled) return;
+
+      // Only forward if forwarding window active (or packet is ALARM/CTRL with higher chance)
+      let allow = fn.fwd.active;
+      if(pkt.cls===DPCLS.ALARM || pkt.cls===DPCLS.CTRL) allow = allow || (rand(this.seed)<0.85);
+
+      if(!allow) return;
+
+      // choose next hop: toward SN (simple)
+      const next = (fnId==="F2") ? (this._node("F1")?.enabled ? "F1" : "SN") : "SN";
+      const fwdPkt = this._mkPkt(DP, pkt.cls, fnId, next, {speed:0.028, ttl: 140});
+      fwdPkt.hop = pkt.hop + 1;
+
+      // enqueue at fn as TX
+      if(this.features.rac && !this._dpAccepted(fn, fwdPkt.cls)){
+        // refuse enq due to self-admission (defensive)
+        this._drop(fwdPkt, `SELF_RAC_${fn.rac}_${fwdPkt.cls}`);
+        return;
+      }
+      this._enqueue(fn, DP, fwdPkt);
+    }
+
+    // -----------------------------------------------------------
+    // Join + Radio state machines (simplified but explicit)
+    // -----------------------------------------------------------
+    _updateJoin(node){
+      if(!node.enabled) { node.join = JOIN.OFF; return; }
+      if(node.join===JOIN.OFF) return;
+      if(node.role==="GH") { node.join=JOIN.DP_ON; return; }
+      if(node.role==="SN") { node.join=JOIN.DP_ON; return; }
+      if(node.role==="FN" && node.join===JOIN.STABLE) node.join=JOIN.DP_ON;
+      if(node.join===JOIN.DP_ON) return;
+
+      // Only Enew uses full join in our default topology; others are already stable.
+      if(node.id!=="Enew") { node.join=JOIN.DP_ON; return; }
+
+      // bounded neighbor list: pick up to 2 neighbors via links
+      const nbrs = this._neighbors(node.id).filter(id=>id!=="GH").slice(0,2);
+      if(node.join===JOIN.SCAN){
+        node.neighbors = nbrs;
+        node.join = JOIN.SELECT;
+        return;
+      }
+      if(node.join===JOIN.SELECT){
+        // select parent (prefer scenario-specified via)
+        const preferred = node._joinVia;
+        node.parent = (preferred && nbrs.includes(preferred)) ? preferred : (nbrs[0] || null);
+        node.join = JOIN.REQ;
+        if(node.parent){
+          // CP join request
+          this._enqueue(node, CP, this._mkPkt(CP, null, node.id, node.parent, {speed:0.020, ttl:120}));
+        }
+        return;
+      }
+      if(node.join===JOIN.REQ){
+        // wait a bit, then ACK arrives from parent (simulated by parent sending CP)
+        if(this.tick % 55 === 0 && node.parent){
+          this._enqueue(this._node(node.parent), CP, this._mkPkt(CP, null, node.parent, node.id, {speed:0.020, ttl:120}));
+          node.join = JOIN.ACK;
+        }
+        return;
+      }
+      if(node.join===JOIN.ACK){
+        // CP stable after some ticks
+        if(this.tick % 90 === 0){
+          node.join = JOIN.STABLE;
+        }
+        return;
+      }
+      if(node.join===JOIN.STABLE){
+        // DP enabled after stability gate
+        if(this.tick % 120 === 0){
+          node.join = JOIN.DP_ON;
+        }
+      }
+    }
+
+    _updateRadio(node){
+      if(!node.enabled) { node.radio = RADIO.SLEEP; return; }
+      // simple radio cycle influenced by duty target and queues
+      const hasTx = node.queues.cp.length + node.queues.dp.length > 0;
+      const r = rand(this.seed);
+
+      switch(node.radio){
+        case RADIO.SLEEP:
+          if(hasTx || (r < this.knobs.dutyTarget*0.5)) node.radio = RADIO.WAKE;
+          break;
+        case RADIO.WAKE:
+          node.radio = RADIO.RX;
+          break;
+        case RADIO.RX:
+          // if need TX, transmit; else sleep based on duty
+          if(hasTx) node.radio = RADIO.TX;
+          else node.radio = (r < this.knobs.dutyTarget) ? RADIO.RX : RADIO.SLEEP;
+          break;
+        case RADIO.TX:
+          // after TX, maybe backoff
+          node.radio = (r < 0.15) ? RADIO.BACKOFF : RADIO.RX;
+          break;
+        case RADIO.BACKOFF:
+          node.radio = RADIO.RX;
+          break;
+      }
+    }
+
+    // -----------------------------------------------------------
+    // Security lifecycle (simplified)
+    // -----------------------------------------------------------
+    _updateSecurity(node){
+      if(!this.features.sec) return;
+
+      // key rotation: every 1800 ticks, rotate epoch
+      if(this.tick>0 && this.tick % 1800 === 0){
+        node.sec.keyEpoch++;
+        node.sec.keyExpires = this.tick + 1800;
+        node.sec.compromised = false;
+        if(node.sec.trust !== TRUST.QUARANTINE) node.sec.trust = TRUST.OK;
+      }
+
+      // compromised nodes: attempt rekey periodically
+      if(node.sec.compromised){
+        if(node.sec.trust === TRUST.SUSPECT && (this.tick % 250 === 0)){
+          // CP rekey attempt (simulated)
+          node.sec.keyEpoch++;
+          node.sec.compromised = false;
+          node.sec.trust = TRUST.OK;
+        }
+        // if repeated issues, occasionally quarantine
+        if(rand(this.seed) < 0.0002){
+          node.sec.trust = TRUST.QUARANTINE;
+        }
+      }
+    }
+
+    // -----------------------------------------------------------
+    // FUOTA lifecycle (simplified campaign)
+    // -----------------------------------------------------------
+    _updateFuota(node){
+      if(!this.features.fuota) return;
+      if(node.role==="GH") return;
+      if(!node.fw.target) return;
+
+      switch(node.fw.state){
+        case FUOTA.SCHEDULED:
+          // wait for CP schedule confirm, then start transfer
+          if(this.tick % 120 === 0){
+            node.fw.state = FUOTA.TRANSFER;
+          }
+          break;
+        case FUOTA.TRANSFER: {
+          // transfer proceeds by receiving BULK packets
+          // if idle too long, retry
+          if(this.tick - node.fw.lastChunkAt > 240){
+            node.fw.retries++;
+            // if too many retries, rollback
+            if(node.fw.retries > 6){
+              node.fw.state = FUOTA.ROLLBACK;
+              break;
+            }
+          }
+          if(node.fw.progress >= 1){
+            node.fw.state = FUOTA.VERIFY;
+          }
+          break;
+        }
+        case FUOTA.VERIFY:
+          if(this.tick % 90 === 0){
+            node.fw.state = FUOTA.COMMIT;
+          }
+          break;
+        case FUOTA.COMMIT:
+          // commit only if enough energy
+          if(!node.battery || node.energy > 12){
+            node.fw.version = node.fw.target;
+            node.fw.state = FUOTA.DONE;
+          } else {
+            node.fw.state = FUOTA.ROLLBACK;
+          }
+          break;
+        case FUOTA.DONE:
+          // clear target
+          if(this.tick % 200 === 0){
+            node.fw.target = null;
+            node.fw.progress = 0;
+            node.fw.retries = 0;
+            node.fw.state = FUOTA.IDLE;
+          }
+          break;
+        case FUOTA.ROLLBACK:
+          // rollback to previous, then clear
+          if(this.tick % 200 === 0){
+            node.fw.target = null;
+            node.fw.progress = 0;
+            node.fw.retries = 0;
+            node.fw.state = FUOTA.IDLE;
+          }
+          break;
+      }
+    }
+
+    // -----------------------------------------------------------
+    // Neighborhood / routing helpers
+    // -----------------------------------------------------------
+    _neighbors(id){
+      const out = [];
+      for(const L of this.links){
+        if(L.a===id) out.push(L.b);
+        else if(L.b===id) out.push(L.a);
+      }
+      const filtered = out.filter(nid => this._node(nid)?.enabled);
+      // deterministic-ish shuffle: sort by "distance" (stable order), then truncate in join logic
+      filtered.sort((u,v)=>{
+        const du = this._linkDist(id,u);
+        const dv = this._linkDist(id,v);
+        return du - dv;
+      });
+      return filtered;
+    }
+
+    _linkDist(a,b){
+      const L = this.links.find(l => (l.a===a && l.b===b) || (l.a===b && l.b===a));
+      return L ? L.dist : 99999;
+    }
+
+    _routeDestinationFor(nodeId){
+      const n = this._node(nodeId);
+      if(!n || !n.enabled) return null;
+      if(n.role === "SN") return "GH";
+      if(n.role === "FN") return "SN";
+      const f1 = this._node("F1");
+      const f2 = this._node("F2");
+      if(f1?.enabled) return "F1";
+      if(f2?.enabled) return "F2";
+      return null;
+    }
+
+    // -----------------------------------------------------------
+    // Traffic generation (CP beacons, DP app traffic, FUOTA chunks)
+    // -----------------------------------------------------------
+    _emitControlPlane(){
+      // CP should survive; keep rate-limited
+      if(!this.features.cpdp || !this.systemOn) return;
+
+      // beacons/health: SN<->F1, F1<->F2, F2<->E2, F1<->E1, F1<->E3
+      const be = (src,dst,mod) => {
+        if(this.tick % mod === 0){
+          const s = this._node(src), d = this._node(dst);
+          if(!s||!d || !s.enabled || !d.enabled) return;
+          // only if both in mesh (joined)
+          if(s.join===JOIN.OFF || d.join===JOIN.OFF) return;
+          this._enqueue(s, CP, this._mkPkt(CP, null, src, dst, {speed:0.020, ttl:150}));
+        }
+      };
+      be("SN","F1", 55);
+      be("F1","SN", 70);
+      be("F1","F2", 80);
+      be("F2","F1", 85);
+      be("F1","E1", 90);
+      be("F2","E2", 100);
+      be("F1","E3", 120);
+
+      // CP rekey announcements if suspect
+      if(this.features.sec){
+        for(const n of this.nodes){
+          if(n.role==="GH") continue;
+          if(!n.enabled) continue;
+          if(n.sec.trust===TRUST.SUSPECT && this.tick % 140 === 0){
+            this._enqueue(n, CP, this._mkPkt(CP, null, n.id, "SN", {speed:0.020, ttl:180}));
+          }
+        }
+      }
+    }
+
+    _emitDataPlane(){
+      if(!this.systemOn) return;
+      // only if DP is allowed by join state
+      const trafficScale = this.knobs.traffic;
+
+      // App telemetry from endpoints toward forwarders
+      const telemProb = clamp(0.06 * trafficScale, 0, 0.45);
+      const bulkProb  = clamp(0.015 * trafficScale, 0, 0.18);
+      const alarmProb = clamp(0.006 * trafficScale, 0, 0.06);
+
+      const maybe = (p)=> rand(this.seed) < p;
+
+      // only from nodes that are DP_ON
+      const E = (id)=> {
+        const n=this._node(id);
+        return n && n.enabled && n.join===JOIN.DP_ON && n.sec.trust!==TRUST.QUARANTINE;
+      };
+
+      const f1 = this._node("F1");
+      const f2 = this._node("F2");
+      const f1On = f1?.enabled;
+      const f2On = f2?.enabled;
+
+      const dstE1 = f1On ? "F1" : (f2On ? "F2" : null);
+      const dstE2 = f2On ? "F2" : (f1On ? "F1" : null);
+      const dstE3 = f1On ? "F1" : (f2On ? "F2" : null);
+
+      // Telemetry
+      if(E("E1") && dstE1 && maybe(telemProb)) this._enqueue(this._node("E1"), DP, this._mkPkt(DP, DPCLS.TELEMETRY, "E1", dstE1,{speed:0.026, ttl:160}));
+      if(E("E2") && dstE2 && maybe(telemProb)) this._enqueue(this._node("E2"), DP, this._mkPkt(DP, DPCLS.TELEMETRY, "E2", dstE2,{speed:0.026, ttl:160}));
+      if(E("E3") && dstE3 && maybe(telemProb*0.7)) this._enqueue(this._node("E3"), DP, this._mkPkt(DP, DPCLS.TELEMETRY, "E3", dstE3,{speed:0.026, ttl:160}));
+
+      // Alarm (high priority)
+      if(E("E1") && dstE1 && maybe(alarmProb)) this._enqueue(this._node("E1"), DP, this._mkPkt(DP, DPCLS.ALARM, "E1", dstE1,{speed:0.030, ttl:140}));
+      if(E("E2") && dstE2 && maybe(alarmProb*0.8)) this._enqueue(this._node("E2"), DP, this._mkPkt(DP, DPCLS.ALARM, "E2", dstE2,{speed:0.030, ttl:140}));
+
+      // Bulk traffic (lowest priority)
+      if(E("E3") && dstE3 && maybe(bulkProb)) this._enqueue(this._node("E3"), DP, this._mkPkt(DP, DPCLS.BULK, "E3", dstE3,{speed:0.020, ttl:200, size:180}));
+
+      // FUOTA chunk emission (bulk) from SN down to nodes
+      if(this.features.fuota && this.tick % 35 === 0){
+        for(const n of this.nodes){
+          if(n.role==="GH" || n.role==="SN") continue;
+          if(!n.enabled) continue;
+          if(n.join!==JOIN.DP_ON) continue;
+          if(n.fw.state!==FUOTA.TRANSFER) continue;
+
+          if(!f1On) break;
+          // send chunk from SN toward the node via F1 (simple)
+          // SN->F1 (bulk), then forwarding logic will carry onward only if windows/constraints allow.
+          this._enqueue(this._node("SN"), DP, this._mkPkt(DP, DPCLS.BULK, "SN","F1",{speed:0.020, ttl:220, size:180}));
+          // and a hint-control (CTRL) to prioritize if degraded
+          if(this.tick % 210 === 0){
+            this._enqueue(this._node("SN"), DP, this._mkPkt(DP, DPCLS.CTRL, "SN","F1",{speed:0.028, ttl:160, size:40}));
+          }
+          break; // only one chunk batch per tick for clarity
+        }
+      }
+    }
+
+    // -----------------------------------------------------------
+    // Degraded/emergency auto trigger + recovery
+    // -----------------------------------------------------------
+    _updateDegradedMode(){
+      if(!this.features.deg) return;
+
+      // If interference very high, auto-degrade; if stable for long, recover.
+      const hi = this.knobs.interference >= 0.72;
+      const lo = this.knobs.interference <= 0.25;
+
+      this._degHold = this._degHold ?? 0;
+      this._recHold = this._recHold ?? 0;
+
+      if(hi){
+        this._degHold++;
+        this._recHold = 0;
+      } else if(lo){
+        this._recHold++;
+        this._degHold = Math.max(0, this._degHold-1);
+      } else {
+        this._degHold = Math.max(0, this._degHold-1);
+        this._recHold = Math.max(0, this._recHold-1);
+      }
+
+      if(this.mode==="NORMAL" && this._degHold > 120){
+        this.mode = "DEGRADED";
+        this.onHud?.("Degraded/Emergency entered", "High interference persisted. DP is restricted to ALARM/CTRL; CP remains survivable.");
+      }
+      if(this.mode==="DEGRADED" && this._recHold > 260){
+        this.mode = "NORMAL";
+        this.onHud?.("Recovered to Normal", "Interference stabilized. DP can resume progressively (still subject to RAC).");
+      }
+    }
+
+    // -----------------------------------------------------------
+    // Public: step / run tick
+    // -----------------------------------------------------------
+    step(steps=1){
+      for(let k=0;k<steps;k++){
+        this._tickOnce();
+      }
+    }
+
+    _tickOnce(){
+      // scenario end
+      if(this.scDuration && this.tick >= this.scDuration){
+        this.running = false;
+        return;
+      }
+
+      // apply scenario events at this tick
+      this._applyScenarioEvents();
+
+      // degraded mode logic
+      this._updateDegradedMode();
+
+      // join + per-node state updates
+      for(const n of this.nodes){
+        // join/radio are always updated (for inspector fidelity)
+        this._updateJoin(n);
+        this._updateRadio(n);
+
+        // protocol engines
+        if(n.enabled){
+          this._updateForwarding(n);
+          this._updateRac(n);
+          this._updateSecurity(n);
+          this._updateFuota(n);
+        }
+
+        // energy floor effects
+        if(n.battery && n.energy <= 0){
+          // dead node behaves as off
+          n.radio = RADIO.SLEEP;
+          n.queues.cp.length = 0;
+          n.queues.dp.length = 0;
+          n.fwd.active = false;
+          n.sec.trust = TRUST.QUARANTINE;
+        }
+      }
+
+      // emit CP/DP traffic
+      this._emitControlPlane();
+
+      // only emit DP if at least one DP_ON node exists (and CPDP enabled)
+      if(this.features.cpdp) this._emitDataPlane();
+
+      // Transmit: for each node, attempt one CP and one DP send (CP priority)
+      for(const n of this.nodes){
+        if(!n.enabled) continue;
+        if(n.join===JOIN.OFF) continue;
+        if(n.radio!==RADIO.TX && n.radio!==RADIO.RX && n.radio!==RADIO.WAKE) continue;
+
+        // CP first
+        this._sendFromQueue(n, CP);
+
+        // DP second: only if dp accepted by self in degraded/rac sense (self-protection)
+        if(n.queues.dp.length){
+          const peek = n.queues.dp[0];
+          if(!this.features.rac || this._dpAccepted(n, peek.cls)){
+            this._sendFromQueue(n, DP);
+          } else {
+            // optionally drop from self queue under CRITICAL to show effect
+            if(this.features.explain && n.rac===RAC.CRITICAL && rand(this.seed)<0.15){
+              const bad = n.queues.dp.shift();
+              this._drop(bad, `SELF_DROP_${n.rac}_${bad.cls}`);
+            }
+          }
+        }
+      }
+
+      // Move packets, deliver or drop
+      // (iterate copy because deliver/drop removes from this.packets)
+      const inflight = this.packets.slice();
+      for(const pkt of inflight){
+        this._packetDeliverOrDrop(pkt);
+      }
+
+      // decay explain overlays
+      if(this.features.explain && this.drops.length){
+        // keep only last ~6 seconds at 60fps-ish -> 360 ticks
+        this.drops = this.drops.filter(d => (this.tick - d.t) <= 360);
+      }
+
+      this.tick++;
+    }
+
+    // Helpers for UI consumption (node + link snapshots)
+    snapshot(){
+      return {
+        tick: this.tick,
+        mode: this.mode,
+        knobs: {...this.knobs},
+        features: {...this.features},
+        metrics: JSON.parse(JSON.stringify(this.metrics)),
+        systemOn: this.systemOn,
+        nodes: this.nodes.map(n=>({
+          id:n.id, role:n.role, x:n.x, y:n.y,
+          battery:n.battery, energy:n.energy,
+          enabled:n.enabled,
+          join:n.join, radio:n.radio, rac:n.rac,
+          fwd:{...n.fwd},
+          ch:{
+            ids:[...n.ch.ids],
+            score: {...n.ch.score},
+            bl:[...n.ch.bl],
+            blUntil: {...n.ch.blUntil}
+          },
+          sec:{...n.sec},
+          fw:{...n.fw},
+          queues:{cp:n.queues.cp.length, dp:n.queues.dp.length},
+          parent:n.parent,
+          neighbors:[...n.neighbors]
+        })),
+        links: this.links.map(l=>({...l})),
+        packets: this.packets.map(p=>({...p})),
+        drops: this.drops.map(d=>({...d})),
+        selectedNodeId: this.selectedNodeId
+      };
+    }
+  }
+
+  // export
+  window.MeshSim = MeshSim;
+  window.MeshSimEnums = { CP, DP, DPCLS, JOIN, RADIO, RAC, TRUST, FUOTA };
+})();
+</script>
+
+<script>
+// --- RENDERER MODULE ---
+(function(){
+  const NS = "http://www.w3.org/2000/svg";
+
+  function el(name, attrs = {}){
+    const e = document.createElementNS(NS, name);
+    for(const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  class MeshRenderer{
+    constructor(svg, sim){
+      this.svg = svg;
+      this.sim = sim;
+
+      this.gLinks = svg.querySelector("#gLinks");
+      this.gPackets = svg.querySelector("#gPackets");
+      this.gDrops = svg.querySelector("#gDrops");
+      this.gNodes = svg.querySelector("#gNodes");
+      this.gLabels = svg.querySelector("#gLabels");
+
+      this.nodeEls = new Map();    // id -> {grp, core, ring1, ring2}
+      this.labelEls = new Map();   // id -> {l1,l2}
+      this.linkEls = [];           // {a,b,line}
+      this.packetEls = new Map();  // pktId -> {grp, body, glow}
+      this.dropEls = new Map();    // idx key -> text
+
+      this._initStatic();
+      this._bindClicks();
+    }
+
+    _initStatic(){
+      const snap = this.sim.snapshot();
+
+      // links
+      this.gLinks.innerHTML = "";
+      this.linkEls = [];
+      for(const L of snap.links){
+        const A = snap.nodes.find(n=>n.id===L.a);
+        const B = snap.nodes.find(n=>n.id===L.b);
+        const isGH = (L.a==="GH" || L.b==="GH");
+        const line = el("line", {
+          x1:A.x, y1:A.y, x2:B.x, y2:B.y,
+          stroke: isGH ? "rgba(255,255,255,.20)" : "rgba(42,53,100,.95)",
+          "stroke-width": isGH ? 2 : 3,
+          "stroke-dasharray": isGH ? "6 6" : ""
+        });
+        this.gLinks.appendChild(line);
+        this.linkEls.push({a:L.a,b:L.b,line});
+      }
+
+      // nodes + labels
+      this.gNodes.innerHTML = "";
+      this.gLabels.innerHTML = "";
+      this.nodeEls.clear();
+      this.labelEls.clear();
+
+      for(const n of snap.nodes){
+        const grp = el("g", {"data-node": n.id, style:"cursor:pointer"});
+        const ring1 = el("circle", {
+          cx:n.x, cy:n.y, r:(this._r(n)+8),
+          fill:"none",
+          stroke:"rgba(255,255,255,0)",
+          "stroke-width": 4
+        });
+        const ring2 = el("circle", {
+          cx:n.x, cy:n.y, r:(this._r(n)+4),
+          fill:"none",
+          stroke:"rgba(255,255,255,0)",
+          "stroke-width": 3
+        });
+        const core = el("circle", {
+          cx:n.x, cy:n.y, r:this._r(n),
+          fill: this._fill(n),
+          stroke: this._stroke(n),
+          "stroke-width": 2.3
+        });
+
+        grp.appendChild(ring1);
+        grp.appendChild(ring2);
+        grp.appendChild(core);
+        this.gNodes.appendChild(grp);
+        this.nodeEls.set(n.id, {grp, core, ring1, ring2});
+
+        const l1 = el("text", {
+          x:n.x, y:n.y + this._r(n) + 18,
+          "text-anchor":"middle",
+          "font-size":"12",
+          fill:"rgba(233,240,255,.88)"
+        });
+        l1.textContent = `${n.id} — ${n.role}`;
+        this.gLabels.appendChild(l1);
+
+        const l2 = el("text", {
+          x:n.x, y:n.y + this._r(n) + 33,
+          "text-anchor":"middle",
+          "font-size":"11",
+          fill:"rgba(169,182,223,.86)"
+        });
+        l2.textContent = (n.role==="GH") ? "Host uplink (outside mesh)" : (n.battery ? "Battery node" : "Non-battery");
+        this.gLabels.appendChild(l2);
+
+        this.labelEls.set(n.id, {l1,l2});
+      }
+    }
+
+    _bindClicks(){
+      this.svg.addEventListener("click", (e)=>{
+        const g = e.target.closest("[data-node]");
+        if(!g) return;
+        const id = g.getAttribute("data-node");
+        this.sim.setSelectedNode(id);
+      });
+    }
+
+    // Sizing per role
+    _r(n){
+      if(n.role==="SN") return 22;
+      if(n.role==="GH") return 18;
+      if(n.role==="FN") return 18;
+      return 16;
+    }
+
+    _fill(n){
+      if(n.role==="SN") return "rgba(80,211,255,.18)";
+      if(n.role==="FN") return "rgba(168,255,99,.12)";
+      if(n.role==="GH") return "rgba(255,255,255,.10)";
+      return "rgba(255,255,255,.07)";
+    }
+
+    _stroke(n){
+      if(n.role==="SN") return "rgba(80,211,255,.85)";
+      if(n.role==="FN") return "rgba(168,255,99,.65)";
+      if(n.role==="GH") return "rgba(255,255,255,.35)";
+      return "rgba(255,255,255,.22)";
+    }
+
+    _pktColor(pkt){
+      if(pkt.plane==="CP") return "var(--cp)";
+      if(pkt.cls==="ALARM") return "var(--alarm)";
+      return "var(--dp)";
+    }
+
+    _pktShape(pkt){
+      if(pkt.plane === "CP") return "diamond";
+      if(pkt.cls === "ALARM") return "triangle";
+      return "circle";
+    }
+
+    render(){
+      const snap = this.sim.snapshot();
+      this._renderLinks(snap);
+      this._renderNodes(snap);
+      this._renderPackets(snap);
+      this._renderDrops(snap);
+    }
+
+    _renderLinks(snap){
+      // Visual cues: degraded mode makes CP dominance obvious; forwarding window highlights FNs
+      for(const L of this.linkEls){
+        const isMesh = !(L.a==="GH"||L.b==="GH");
+        if(!isMesh) continue;
+
+        let stroke = "rgba(42,53,100,.95)";
+        let w = 3;
+
+        if(snap.mode==="DEGRADED"){
+          stroke = "rgba(80,211,255,.22)";
+        }
+
+        const A = snap.nodes.find(n=>n.id===L.a);
+        const B = snap.nodes.find(n=>n.id===L.b);
+        const nodeOff = !(A?.enabled) || !(B?.enabled) || !snap.systemOn;
+        if(nodeOff){
+          stroke = "rgba(255,255,255,.08)";
+          w = 2;
+        }
+
+        // if any endpoint is a forwarder with active fwd window, highlight
+        const fwdActive = (A?.role==="FN" && A?.fwd?.active) || (B?.role==="FN" && B?.fwd?.active);
+        if(fwdActive){
+          stroke = "rgba(168,255,99,.26)";
+          w = 3.8;
+        }
+
+        // if link touches a CRITICAL RAC node, show defensive (red-ish)
+        const racCrit = (A?.rac==="CRITICAL") || (B?.rac==="CRITICAL");
+        if(racCrit){
+          stroke = "rgba(255,59,59,.24)";
+          w = 4.2;
+        }
+
+        L.line.setAttribute("stroke", stroke);
+        L.line.setAttribute("stroke-width", w);
+        L.line.setAttribute("stroke-dasharray", nodeOff ? "4 6" : "");
+      }
+    }
+
+    _renderNodes(snap){
+      for(const n of snap.nodes){
+        const els = this.nodeEls.get(n.id);
+        if(!els) continue;
+
+        // base fill/stroke
+        els.core.setAttribute("fill", this._fill(n));
+
+        if(!n.enabled || !snap.systemOn){
+          els.core.setAttribute("fill", "rgba(255,255,255,.03)");
+          els.core.setAttribute("stroke", "rgba(255,255,255,.10)");
+        } else if(n.battery && n.energy <= 0){
+          els.core.setAttribute("fill", "rgba(255,255,255,.03)");
+          els.core.setAttribute("stroke", "rgba(255,255,255,.10)");
+        } else {
+          // RAC coloring on stroke for visibility (especially forwarders)
+          let s = this._stroke(n);
+          if(n.rac==="GUARDED") s = "rgba(255,209,102,.95)";
+          if(n.rac==="CRITICAL") s = "rgba(255,59,59,.95)";
+          els.core.setAttribute("stroke", s);
+        }
+
+        // ring1: forwarding active
+        els.ring1.setAttribute("stroke", (n.role==="FN" && n.fwd?.active && n.enabled) ? "rgba(168,255,99,.95)" : "rgba(255,255,255,0)");
+
+        // ring2: selected node
+        const sel = (snap.selectedNodeId === n.id);
+        els.ring2.setAttribute("stroke", sel ? "rgba(80,211,255,.95)" : "rgba(255,255,255,0)");
+
+        // update label2 with energy/join state compactly
+        const labs = this.labelEls.get(n.id);
+        if(labs){
+          const e = n.battery ? `E=${n.energy.toFixed(0)}` : "E=—";
+          const on = n.enabled ? "ON" : "OFF";
+          labs.l2.textContent =
+            (n.role==="GH") ? "Host uplink (outside mesh)" :
+            `${e} | ${on} | JOIN=${n.join} | RADIO=${n.radio}`;
+        }
+      }
+    }
+
+    _renderPackets(snap){
+      // create/update packet elements
+      const alive = new Set();
+      for(const pkt of snap.packets){
+        alive.add(pkt.id);
+
+        let pe = this.packetEls.get(pkt.id);
+        if(!pe){
+          const color = this._pktColor(pkt);
+          const shape = this._pktShape(pkt);
+          const grp = el("g");
+          const glow = el("circle", {cx:0, cy:0, r: (pkt.plane==="CP"?9:10), fill:color, opacity:0.12});
+          let body;
+          if(shape === "diamond"){
+            body = el("rect", {x:-4, y:-4, width:8, height:8, fill:color, opacity:0.95});
+          } else if(shape === "triangle"){
+            body = el("polygon", {points:"0,-6 6,6 -6,6", fill:color, opacity:0.95});
+          } else {
+            body  = el("circle", {cx:0, cy:0, r: 4.5, fill:color, opacity:0.95});
+          }
+          grp.appendChild(glow);
+          grp.appendChild(body);
+          this.gPackets.appendChild(grp);
+          pe = {grp, glow, body};
+          this.packetEls.set(pkt.id, pe);
+        }
+
+        const src = snap.nodes.find(n=>n.id===pkt.src);
+        const dst = snap.nodes.find(n=>n.id===pkt.dst);
+        if(!src || !dst) continue;
+
+        const x = src.x + (dst.x - src.x) * pkt.p;
+        const y = src.y + (dst.y - src.y) * pkt.p;
+
+        if(pe.body.tagName === "circle"){
+          pe.body.setAttribute("cx", x);
+          pe.body.setAttribute("cy", y);
+        } else {
+          const rot = this._pktShape(pkt) === "diamond" ? " rotate(45)" : "";
+          pe.body.setAttribute("transform", `translate(${x},${y})${rot}`);
+        }
+        pe.glow.setAttribute("cx", x);
+        pe.glow.setAttribute("cy", y);
+      }
+
+      // remove stale packet elements
+      for(const [id, pe] of this.packetEls.entries()){
+        if(!alive.has(id)){
+          try{ pe.grp.remove(); }catch(e){}
+          this.packetEls.delete(id);
+        }
+      }
+    }
+
+    _renderDrops(snap){
+      // Show drop/blacklist events if explain enabled; else clear
+      this.gDrops.innerHTML = "";
+      if(!snap.features.explain) return;
+
+      // Show up to last 24 overlays for readability
+      const list = snap.drops.slice(-24);
+      for(const d of list){
+        const t = el("text", {
+          x: d.x,
+          y: d.y,
+          "text-anchor":"middle",
+          "font-size":"12",
+          fill:"rgba(255,209,102,.95)"
+        });
+        t.textContent = d.msg;
+        this.gDrops.appendChild(t);
+      }
+    }
+  }
+
+  window.MeshRenderer = MeshRenderer;
+})();
+</script>
+
+<script>
+// --- UI GLUE MODULE ---
+(function(){
+  const $ = (id)=>document.getElementById(id);
+
+  const sim = new window.MeshSim();
+  const renderer = new window.MeshRenderer($("svg"), sim);
+
+  // HUD callback from sim
+  sim.onHud = (title, desc) => {
+    $("hudTitle").textContent = title || "";
+    $("hudDesc").textContent = desc || "";
+  };
+
+  // Inspector callback
+  sim.onSelectNode = (id) => {
+    // no-op here; we update inspector on each frame for live view
+  };
+
+  // Populate scenarios
+  const scenarios = window.MeshScenarios || [];
+  const scSelect = $("scSelect");
+  const scHelp = $("scHelp");
+
+  function loadScenarioById(id){
+    const sc = scenarios.find(s=>s.id===id) || scenarios[0];
+    if(!sc) return;
+    sim.loadScenario(sc);
+    scHelp.textContent = sc.help || "";
+    // reset HUD
+    $("hudTitle").textContent = "Ready";
+    $("hudDesc").textContent = "Load a scenario and press Play. Click nodes to inspect.";
+    // update UI from sim initial
+    pullSimToUi();
+    renderer.render();
+  }
+
+  for(const sc of scenarios){
+    const opt = document.createElement("option");
+    opt.value = sc.id;
+    opt.textContent = sc.name;
+    scSelect.appendChild(opt);
+  }
+  scSelect.addEventListener("change", ()=>loadScenarioById(scSelect.value));
+
+  // Controls
+  $("btnPlay").addEventListener("click", ()=> sim.running = true);
+  $("btnPause").addEventListener("click", ()=> sim.running = false);
+  $("btnStep").addEventListener("click", ()=> { sim.running = false; sim.step(1); tickUiAndRender(); });
+  $("btnReset").addEventListener("click", ()=> { sim.reset(); tickUiAndRender(); });
+
+  // Congestion injection: simplest = raise interference and traffic briefly
+  $("btnStress").addEventListener("click", ()=>{
+    sim.knobs.traffic = Math.min(5, sim.knobs.traffic + 1.2);
+    sim.knobs.interference = Math.min(1, sim.knobs.interference + 0.18);
+    sim.onHud("Injected congestion", "Traffic + interference bumped. RAC may transition to Guarded/Critical.");
+  });
+
+  $("btnToggleDeg").addEventListener("click", ()=>{
+    sim.mode = (sim.mode==="NORMAL") ? "DEGRADED" : "NORMAL";
+    sim.onHud("Mode toggled", `Mode is now ${sim.mode}. (If DEG enabled, DP is restricted to ALARM/CTRL.)`);
+  });
+
+  $("btnStartFuota").addEventListener("click", ()=>{
+    // Use scenario event style by calling internal method via a small hack:
+    // We keep it clean by issuing a synthetic event at current tick.
+    // (Alternatively, expose a public method in sim.)
+    const ev = {t: sim.tick, type:"START_FUOTA", version:"1.1.0"};
+    sim.scEvents.push(ev);
+    sim.scEvents.sort((a,b)=>a.t-b.t);
+    sim.onHud("FUOTA started", "FUOTA campaign triggered from UI. Watch per-node progress and commit behavior.");
+  });
+
+  // System power
+  const systemBtn = $("btnSystemPower");
+  const systemState = $("systemState");
+  systemBtn.addEventListener("click", ()=>{
+    sim.setSystemOn(!sim.systemOn);
+    syncSystemPower();
+  });
+
+  function syncSystemPower(){
+    systemBtn.textContent = sim.systemOn ? "System ON" : "System OFF";
+    systemBtn.classList.toggle("danger", !sim.systemOn);
+    systemBtn.classList.toggle("primary", sim.systemOn);
+    systemState.textContent = sim.systemOn ? "All communications enabled." : "System offline (packets paused/cleared).";
+  }
+
+  // Emergency sender
+  const emergencyNode = $("emergencyNode");
+  $("btnEmergency").addEventListener("click", ()=>{
+    sim.sendEmergencyFrom(emergencyNode.value);
+  });
+
+  function syncEmergencyNodes(){
+    emergencyNode.innerHTML = "";
+    sim.nodes.forEach(n=>{
+      if(n.role === "GH") return;
+      const opt = document.createElement("option");
+      opt.value = n.id;
+      opt.textContent = `${n.id} (${n.role})`;
+      emergencyNode.appendChild(opt);
+    });
+  }
+
+  // Node power toggles
+  const nodeToggles = $("nodeToggles");
+  function renderNodeToggles(){
+    nodeToggles.innerHTML = "";
+    sim.nodes.forEach(n=>{
+      if(n.role === "GH") return;
+      const row = document.createElement("label");
+      row.className = "node-toggle";
+      const text = document.createElement("span");
+      text.textContent = `${n.id} (${n.role})`;
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.checked = n.enabled;
+      check.addEventListener("change", ()=>{
+        sim.setNodePower(n.id, check.checked);
+      });
+      row.appendChild(text);
+      row.appendChild(check);
+      nodeToggles.appendChild(row);
+    });
+  }
+
+  // Speed (ticks per frame)
+  $("speed").addEventListener("input", ()=>{
+    sim.speed = parseInt($("speed").value, 10) || 1;
+  });
+
+  // Knobs
+  function bindRange(id, key, fmt){
+    const r = $(id);
+    const v = $(id+"V");
+    const sync = () => {
+      const val = parseFloat(r.value);
+      sim.knobs[key] = val;
+      v.textContent = fmt ? fmt(val) : String(val);
+    };
+    r.addEventListener("input", sync);
+    sync();
+  }
+  bindRange("knInterf","interference",(x)=>x.toFixed(2));
+  bindRange("knTraffic","traffic",(x)=>x.toFixed(1));
+  bindRange("knDuty","dutyTarget",(x)=>x.toFixed(2));
+
+  // Feature toggles
+  function bindCheck(id, key){
+    const c = $(id);
+    const sync = () => sim.features[key] = !!c.checked;
+    c.addEventListener("change", sync);
+    sync();
+  }
+  bindCheck("ftCpdp","cpdp");
+  bindCheck("ftRac","rac");
+  bindCheck("ftFwd","fwd");
+  bindCheck("ftCh","ch");
+  bindCheck("ftSec","sec");
+  bindCheck("ftFuota","fuota");
+  bindCheck("ftDeg","deg");
+  bindCheck("ftExplain","explain");
+
+  // Push sim -> UI widgets (for scenario loads/resets)
+  function pullSimToUi(){
+    $("knInterf").value = sim.knobs.interference;
+    $("knInterfV").textContent = sim.knobs.interference.toFixed(2);
+
+    $("knTraffic").value = sim.knobs.traffic;
+    $("knTrafficV").textContent = sim.knobs.traffic.toFixed(1);
+
+    $("knDuty").value = sim.knobs.dutyTarget;
+    $("knDutyV").textContent = sim.knobs.dutyTarget.toFixed(2);
+
+    $("ftCpdp").checked = !!sim.features.cpdp;
+    $("ftRac").checked  = !!sim.features.rac;
+    $("ftFwd").checked  = !!sim.features.fwd;
+    $("ftCh").checked   = !!sim.features.ch;
+    $("ftSec").checked  = !!sim.features.sec;
+    $("ftFuota").checked= !!sim.features.fuota;
+    $("ftDeg").checked  = !!sim.features.deg;
+    $("ftExplain").checked = !!sim.features.explain;
+
+    $("speed").value = String(sim.speed || 1);
+    syncSystemPower();
+    renderNodeToggles();
+    syncEmergencyNodes();
+  }
+
+  function kpisFromSnap(snap){
+    $("kMode").textContent = snap.mode;
+    $("kTick").textContent = String(snap.tick);
+    $("kDel").textContent = `${snap.metrics.delCP} / ${snap.metrics.delDP}`;
+    $("kDrop").textContent = String(snap.metrics.drop);
+  }
+
+  function renderInspector(snap){
+    const id = snap.selectedNodeId;
+    if(!id){
+      $("inspector").textContent = "No node selected.";
+      return;
+    }
+    const n = snap.nodes.find(x=>x.id===id);
+    if(!n){
+      $("inspector").textContent = "Selected node not found.";
+      return;
+    }
+
+    const lines = [];
+    lines.push(`${n.id} (${n.role})`);
+    lines.push(`Power: ${n.enabled ? "ON" : "OFF"}`);
+    lines.push(`Energy: ${n.battery ? n.energy.toFixed(1) : "—"} | Battery: ${n.battery}`);
+    lines.push(`Join: ${n.join} | Radio: ${n.radio}`);
+    lines.push(`RAC: ${n.rac} | Queues: CP=${n.queues.cp}, DP=${n.queues.dp}`);
+    lines.push(`Forwarding: ${n.role==="FN" ? (n.fwd.active ? `ACTIVE until ${n.fwd.until}` : `inactive (cooldown ${n.fwd.cooldown})`) : "n/a"}`);
+    lines.push(`Parent: ${n.parent || "—"} | Neighbors: ${(n.neighbors||[]).join(", ") || "—"}`);
+    lines.push("");
+    lines.push(`Channel IDs: ${n.ch.ids.join(", ")}`);
+    lines.push(`Blacklisted: ${(n.ch.bl||[]).join(", ") || "—"}`);
+    lines.push(`Scores: ${Object.entries(n.ch.score).map(([k,v])=>`ch${k}:${(+v).toFixed(2)}`).join("  ")}`);
+    lines.push("");
+    lines.push(`SEC trust: ${n.sec.trust} | keyEpoch: ${n.sec.keyEpoch} | compromised: ${n.sec.compromised}`);
+    lines.push(`FW version: ${n.fw.version} | target: ${n.fw.target||"—"} | state: ${n.fw.state} | progress: ${(n.fw.progress*100).toFixed(0)}% | retries: ${n.fw.retries}`);
+
+    $("inspector").textContent = lines.join("\n");
+  }
+
+  function renderMetrics(snap){
+    const m = snap.metrics;
+    const topReasons = Object.entries(m.dropByReason||{})
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,8);
+
+    const lines = [];
+    lines.push(`Sent: CP=${m.sentCP}  DP=${m.sentDP}`);
+    lines.push(`Delivered: CP=${m.delCP}  DP=${m.delDP}`);
+    lines.push(`Delivered by class: ALARM=${m.delByClass.ALARM}  TELEMETRY=${m.delByClass.TELEMETRY}  BULK=${m.delByClass.BULK}  CTRL=${m.delByClass.CTRL}`);
+    lines.push(`Avg latency (ticks): ${m.avgLatency.toFixed(1)}  (n=${m.latCount})`);
+    lines.push(`Drops: ${m.drop}`);
+    lines.push(`Top drop reasons:`);
+    if(topReasons.length===0) lines.push(`  —`);
+    else for(const [r,c] of topReasons) lines.push(`  ${r}: ${c}`);
+    $("metrics").textContent = lines.join("\n");
+  }
+
+  function tickUiAndRender(){
+    const snap = sim.snapshot();
+    kpisFromSnap(snap);
+    renderInspector(snap);
+    renderMetrics(snap);
+    renderer.render();
+  }
+
+  // Main animation loop
+  function loop(){
+    if(sim.running){
+      const steps = Math.max(1, sim.speed|0);
+      sim.step(steps);
+    }
+    tickUiAndRender();
+    requestAnimationFrame(loop);
+  }
+
+  // Initialize: load first scenario
+  if(scenarios.length){
+    scSelect.value = scenarios[0].id;
+    loadScenarioById(scenarios[0].id);
+  } else {
+    sim.reset();
+    pullSimToUi();
+    tickUiAndRender();
+  }
+
+  syncEmergencyNodes();
+  renderNodeToggles();
+  syncSystemPower();
+  loop();
+})();
+</script>
+</body>
+</html>
