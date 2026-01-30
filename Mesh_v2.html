@@ -148,6 +148,31 @@
     }
     .hud .t{font-size:13px;font-weight:800;margin-bottom:4px;}
     .hud .d{font-size:12px;color:var(--muted);line-height:1.35;}
+    .status-line{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:6px;
+      font-size:11px;
+      color:var(--muted);
+    }
+    .status-pill{
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      border:1px solid rgba(255,255,255,.18);
+    }
+    .status-pill.ok{
+      color:var(--good);
+      border-color: rgba(124,255,178,.45);
+      background: rgba(124,255,178,.08);
+    }
+    .status-pill.bad{
+      color:var(--bad);
+      border-color: rgba(255,59,59,.45);
+      background: rgba(255,59,59,.08);
+    }
     .legend{
       position:absolute; right:14px; top:14px;
       background: rgba(0,0,0,.22);
@@ -230,6 +255,33 @@
           <button class="danger" id="btnEmergency">Send Emergency</button>
         </div>
         <div class="small" style="margin-top:6px">Emergency messages are ALARM DP and shown as triangles.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card">
+        <label>Patient Event</label>
+        <select id="patientSelect"></select>
+        <label style="margin-top:6px;display:block;">Event</label>
+        <select id="patientEvent"></select>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="btnPatientEvent">Trigger Event</button>
+        </div>
+        <div class="sp"></div>
+        <label>MRI EMI Zone</label>
+        <div class="row" style="margin-top:8px">
+          <button id="btnMriOn">MRI ON (Ward B)</button>
+          <button id="btnMriOff">MRI OFF</button>
+        </div>
+        <div class="sp"></div>
+        <label>Gateway</label>
+        <div class="toggle" style="margin-top:8px">
+          <input id="gatewayToggle" type="checkbox" checked/>
+          <div>
+            <b>Gateway Online</b>
+            <div class="d">Server reachable from sinks.</div>
+          </div>
+        </div>
       </div>
 
       <div class="divider"></div>
@@ -324,6 +376,10 @@
       <div class="hud">
         <div class="t" id="hudTitle">Ready</div>
         <div class="d" id="hudDesc">Load a scenario and press Play. Click nodes to inspect.</div>
+        <div class="status-line">
+          <span>Server</span>
+          <span class="status-pill ok" id="hudServer">Connected</span>
+        </div>
       </div>
 
       <div class="legend">
@@ -338,6 +394,8 @@
       </div>
 
       <svg id="svg" viewBox="0 0 1100 650" aria-label="mesh diagram">
+        <g id="gRooms"></g>
+        <g id="gInterf"></g>
         <g id="gLinks"></g>
         <g id="gPackets"></g>
         <g id="gDrops"></g>
@@ -363,7 +421,7 @@
     2200,
     [
       {t:0, type:"SET_HUD", title:"Baseline", desc:"System starts stable. A new node will join via a chosen parent; DP turns on after CP stability gate."},
-      {t:60, type:"JOIN_NODE", nodeId:"Enew", via:"F2"},
+      {t:60, type:"JOIN_NODE", nodeId:"A10", via:"C1"},
       {t:120, type:"SET_TRAFFIC", value:1.1},
       {t:140, type:"SET_INTERFERENCE", value:0.12},
       {t:400, type:"SET_HUD", title:"DP enabled progressively", desc:"After CP is stable, DP telemetry begins. Forwarders may open ephemeral forwarding windows."},
@@ -379,7 +437,7 @@
     2400,
     [
       {t:0, type:"SET_HUD", title:"RAC Demo", desc:"Traffic and interference will increase. Receiver Admission Control will enter Guarded/Critical and drop DP selectively."},
-      {t:40, type:"JOIN_NODE", nodeId:"Enew", via:"F2"},
+      {t:40, type:"JOIN_NODE", nodeId:"B20", via:"C2"},
       {t:100, type:"SET_TRAFFIC", value:1.4},
       {t:460, type:"SET_TRAFFIC", value:3.8},
       {t:520, type:"SET_INTERFERENCE", value:0.55},
@@ -399,7 +457,7 @@
     [
       {t:0, type:"SET_HUD", title:"Channel scoring", desc:"We will blacklist a channel on a node and raise interference to worsen PER; scores recover after cooldown."},
       {t:50, type:"SET_INTERFERENCE", value:0.25},
-      {t:200, type:"BLACKLIST_CHANNEL", nodeId:"F1", ch:15},
+      {t:200, type:"BLACKLIST_CHANNEL", nodeId:"C1", ch:15},
       {t:380, type:"SET_INTERFERENCE", value:0.60},
       {t:700, type:"SET_INTERFERENCE", value:0.40},
       {t:1050, type:"SET_INTERFERENCE", value:0.18},
@@ -415,10 +473,10 @@
     2400,
     [
       {t:0, type:"SET_HUD", title:"Security lifecycle", desc:"We will mark a node's key as compromised; it becomes SUSPECT and will attempt rekey/attestation."},
-      {t:120, type:"COMPROMISE_KEY", nodeId:"E1"},
+      {t:120, type:"COMPROMISE_KEY", nodeId:"A03"},
       {t:180, type:"SET_INTERFERENCE", value:0.20},
       {t:600, type:"SET_HUD", title:"Rekey attempts", desc:"Rekey is simulated periodically; trust returns to OK when successful. Quarantine can drop DP."},
-      {t:1100, type:"COMPROMISE_KEY", nodeId:"E2"},
+      {t:1100, type:"COMPROMISE_KEY", nodeId:"B11"},
       {t:1500, type:"SET_INTERFERENCE", value:0.12},
     ]
   );
@@ -451,6 +509,117 @@
       {t:900, type:"SET_INTERFERENCE", value:0.75},
       {t:1300, type:"SET_INTERFERENCE", value:0.20},
       {t:1600, type:"SET_HUD", title:"Recovery gate", desc:"After stability holds, simulator returns to NORMAL and DP resumes subject to RAC."},
+    ]
+  );
+
+  add(
+    "hospital_s1_telemetry",
+    "Hospital S1: Normal vitals → server",
+    "Ward A/B periodic telemetry from multiple patients; stable CP + DP.",
+    2200,
+    [
+      {t:0, type:"SET_HUD", title:"S1 Normal Telemetry", desc:"Vitals flow from Ward A/B to GH via best sink. Observe stable DP + CP."},
+      {t:80, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
+      {t:120, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
+      {t:160, type:"PATIENT_EVENT", patientId:"P3", kind:"TELEMETRY"},
+      {t:200, type:"PATIENT_EVENT", patientId:"P4", kind:"TELEMETRY"},
+      {t:400, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
+      {t:520, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
+      {t:640, type:"PATIENT_EVENT", patientId:"P3", kind:"TELEMETRY"},
+      {t:760, type:"PATIENT_EVENT", patientId:"P4", kind:"TELEMETRY"},
+    ]
+  );
+
+  add(
+    "hospital_s2_hr_alarm",
+    "Hospital S2: High HR Alarm (Ward B)",
+    "Patient in Ward B escalates to ALARM DP. Telemetry may drop first if RAC escalates.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"S2 High HR", desc:"P2 (Ward B) telemetry then HR alarm. Alarm is prioritized vs telemetry."},
+      {t:80, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
+      {t:180, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
+      {t:220, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
+      {t:260, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
+      {t:340, type:"SET_TRAFFIC", value:2.6},
+      {t:380, type:"SET_INTERFERENCE", value:0.25},
+    ]
+  );
+
+  add(
+    "hospital_s3_fall",
+    "Hospital S3: Fall detected (Ward A)",
+    "Fall alarm bursts; RAC should preserve ALARM under pressure.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"S3 Fall", desc:"P3 (Ward A) fall alarm. Inject mild congestion; alarms should survive."},
+      {t:120, type:"PATIENT_EVENT", patientId:"P3", kind:"FALL"},
+      {t:160, type:"PATIENT_EVENT", patientId:"P3", kind:"FALL"},
+      {t:200, type:"PATIENT_EVENT", patientId:"P3", kind:"FALL"},
+      {t:360, type:"SET_TRAFFIC", value:3.2},
+      {t:420, type:"SET_INTERFERENCE", value:0.35},
+    ]
+  );
+
+  add(
+    "hospital_s4_nurse_call",
+    "Hospital S4: Nurse call button (Ward B)",
+    "User-triggered ALARM DP; show fast path and survivability.",
+    2000,
+    [
+      {t:0, type:"SET_HUD", title:"S4 Nurse Call", desc:"P4 presses nurse call. Alarm DP prioritised to GH."},
+      {t:140, type:"PATIENT_EVENT", patientId:"P4", kind:"NURSE_CALL"},
+      {t:240, type:"PATIENT_EVENT", patientId:"P4", kind:"NURSE_CALL"},
+      {t:320, type:"SET_TRAFFIC", value:2.0},
+    ]
+  );
+
+  add(
+    "hospital_s5_mri_emi",
+    "Hospital S5: MRI EMI zone near Ward B beds",
+    "MRI causes localized attenuation/EMI; channel scores degrade; blacklists may trigger; alarms still prioritised.",
+    2600,
+    [
+      {t:0, type:"SET_HUD", title:"S5 MRI EMI", desc:"MRI turns ON near Ward B. Observe localized PER increase + channel blacklist + RAC gating."},
+      {t:120, type:"MRI_ON", id:"MRI1", x: 740, y: 360, r: 220, strength: 0.85, until: 1900},
+      {t:160, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
+      {t:220, type:"PATIENT_EVENT", patientId:"P4", kind:"TELEMETRY"},
+      {t:420, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
+      {t:520, type:"SET_TRAFFIC", value:3.6},
+      {t:1900, type:"MRI_OFF", id:"MRI1"},
+      {t:2100, type:"SET_HUD", title:"MRI off", desc:"EMI cleared. Scores should recover; DP delivery improves."},
+    ]
+  );
+
+  add(
+    "hospital_sink_failover",
+    "Hospital: Sink failover (SN1 down → SN2)",
+    "Turn off SN1; nodes reattach and route to SN2 automatically.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"Sink Failover", desc:"SN1 fails. Network should automatically route via SN2."},
+      {t:120, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
+      {t:240, type:"SINK_DOWN", nodeId:"SN1"},
+      {t:360, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
+      {t:460, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
+      {t:900, type:"SINK_UP", nodeId:"SN1"},
+      {t:1100, type:"PATIENT_EVENT", patientId:"P3", kind:"TELEMETRY"},
+    ]
+  );
+
+  add(
+    "hospital_gateway_down",
+    "Hospital: Gateway down (server unreachable)",
+    "Mesh continues locally; delivery to GH fails until restored.",
+    2400,
+    [
+      {t:0, type:"SET_HUD", title:"Gateway Down", desc:"GH uplink fails. Mesh still runs; packets to server will drop as GW_DOWN."},
+      {t:120, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
+      {t:240, type:"GATEWAY_DOWN"},
+      {t:360, type:"PATIENT_EVENT", patientId:"P2", kind:"HR_ALARM"},
+      {t:520, type:"PATIENT_EVENT", patientId:"P4", kind:"NURSE_CALL"},
+      {t:1100, type:"GATEWAY_UP"},
+      {t:1260, type:"PATIENT_EVENT", patientId:"P3", kind:"FALL"},
     ]
   );
 
@@ -543,42 +712,83 @@
       this._initTopology();
     }
 
+    _makeRoom(id, x, y, w, h){
+      return {id, x, y, w, h};
+    }
+
+    _randInRoom(room){
+      const rx = rand(this.seed), ry = rand(this.seed);
+      return { x: room.x + 40 + rx*(room.w-80), y: room.y + 40 + ry*(room.h-80) };
+    }
+
     _initTopology(){
-      // Small mesh; extend as needed
-      // Roles: SN (sink), GH (gateway host), FN (forwarder), EN (endpoint)
       const baseE = this.knobs.energyBudget;
 
-      this.nodes = [
-        this._mkNode("SN","SN", 860,170, baseE*2, false),
-        this._mkNode("GH","GH", 1030,95, baseE*999, false), // outside mesh
-        this._mkNode("F1","FN", 620,240, baseE*1.2, true),
-        this._mkNode("F2","FN", 540,450, baseE*1.2, true),
-        this._mkNode("F3","FN", 760,420, baseE*1.2, true),
-        this._mkNode("E1","EN", 260,280, baseE, true),
-        this._mkNode("E2","EN", 270,480, baseE, true),
-        this._mkNode("E3","EN", 410,150, baseE, true),
-        this._mkNode("E4","EN", 900,520, baseE, true),
-        this._mkNode("E5","EN", 680,560, baseE, true),
-        this._mkNode("Enew","EN", 130,370, baseE, true),
+      this.rooms = [
+        this._makeRoom("WardA", 70, 110, 420, 470),
+        this._makeRoom("WardB", 520, 110, 420, 470),
+        this._makeRoom("GatewayRoom", 960, 110, 120, 210),
+        this._makeRoom("NurseStation", 960, 360, 120, 220),
       ];
 
-      // default: Enew is not part of mesh until scenario JOIN_NODE
-      this._node("Enew").join = JOIN.OFF;
+      const roomById = (id)=>this.rooms.find(r=>r.id===id);
+      const place = (rid)=>this._randInRoom(roomById(rid));
 
-      const L = (a,b)=>this._addLink(a,b);
-      this.links = [];
-      L("SN","F1");
-      L("F1","E3");
-      L("F1","E1");
-      L("F2","E2");
-      L("F2","E1");
-      L("F1","F2");
-      L("F1","F3");
-      L("F2","F3");
-      L("SN","F3");
-      L("F3","E4");
-      L("F3","E5");
-      L("SN","GH"); // host uplink (not mesh-controlled)
+      this.nodes = [];
+
+      // Gateway Host
+      {
+        const p = place("GatewayRoom");
+        this.nodes.push(this._mkNode("GH","GH", p.x, p.y, baseE*999, false));
+      }
+
+      // Two sinks in gateway room
+      {
+        const p1 = place("GatewayRoom");
+        const p2 = place("GatewayRoom");
+        this.nodes.push(this._mkNode("SN1","SN", p1.x, p1.y, baseE*2.5, false));
+        this.nodes.push(this._mkNode("SN2","SN", p2.x, p2.y, baseE*2.5, false));
+      }
+
+      // Ward A endpoints
+      for(let i=1;i<=10;i++){
+        const id = "A"+String(i).padStart(2,"0");
+        const p = place("WardA");
+        this.nodes.push(this._mkNode(id,"EN", p.x, p.y, baseE, true));
+      }
+
+      // Ward B endpoints
+      for(let i=1;i<=20;i++){
+        const id = "B"+String(i).padStart(2,"0");
+        const p = place("WardB");
+        this.nodes.push(this._mkNode(id,"EN", p.x, p.y, baseE, true));
+      }
+
+      // Corridor helpers (forwarder candidates)
+      this.nodes.push(this._mkNode("C1","FN", 495,260, baseE*1.4, true));
+      this.nodes.push(this._mkNode("C2","FN", 495,430, baseE*1.4, true));
+
+      // Proximity links
+      this._buildProximityLinks(230, 4);
+
+      // default join states
+      this.nodes.forEach(n=>{
+        if(n.role==="GH") n.join = JOIN.DP_ON;
+        else if(n.role==="SN") n.join = JOIN.DP_ON;
+        else if(n.role==="FN") n.join = JOIN.DP_ON;
+        else n.join = JOIN.DP_ON;
+      });
+
+      // Patient mapping
+      this.patients = [
+        {id:"P1", room:"WardA", nodeId:"A03"},
+        {id:"P2", room:"WardB", nodeId:"B11"},
+        {id:"P3", room:"WardA", nodeId:"A09"},
+        {id:"P4", room:"WardB", nodeId:"B02"},
+      ];
+
+      this.gatewayOnline = true;
+      this.interferenceSources = [];
     }
 
     _mkNode(id, role, x,y, energy, battery){
@@ -599,6 +809,7 @@
         queues: {cp:[], dp:[]},
         neighbors: [], // bounded
         parent: null,  // upstream choice
+        attach: { parent:null, backups:[], lastEval:0, sink:null },
         fwd: {active:false, until:0, cooldown:0},
         ch: {
           ids: channels,
@@ -632,12 +843,45 @@
       this.links.push({a,b,dist});
     }
 
+    _buildProximityLinks(maxDist=230, k=4){
+      this.links = [];
+
+      const add = (a,b)=>{
+        if(a===b) return;
+        if(this.links.some(l => (l.a===a && l.b===b) || (l.a===b && l.b===a))) return;
+        const A=this._node(a), B=this._node(b);
+        if(!A||!B) return;
+        const dx=A.x-B.x, dy=A.y-B.y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<=maxDist) this.links.push({a,b,dist});
+      };
+
+      const meshNodes = this.nodes.filter(n=>n.role!=="GH");
+      for(const n of meshNodes){
+        const near = meshNodes
+          .filter(m=>m.id!==n.id)
+          .map(m=>{
+            const dx=n.x-m.x, dy=n.y-m.y;
+            return {id:m.id, dist:Math.sqrt(dx*dx+dy*dy)};
+          })
+          .sort((p,q)=>p.dist-q.dist)
+          .slice(0,k);
+
+        for(const o of near) add(n.id, o.id);
+      }
+
+      // Host uplinks
+      this.links.push({a:"SN1", b:"GH", dist:0});
+      this.links.push({a:"SN2", b:"GH", dist:0});
+    }
+
     reset(){
       this.tick = 0;
       this.running = false;
       this.mode = "NORMAL";
       this.scIndex = 0;
       this.systemOn = true;
+      this.seed = {v: 123456789};
       this.packets = [];
       this.drops = [];
       this.metrics = {
@@ -689,13 +933,18 @@
         n.join = JOIN.OFF;
         n.parent = null;
         n.neighbors = [];
+        if(n.attach){
+          n.attach.parent = null;
+          n.attach.backups = [];
+          n.attach.sink = null;
+        }
       } else {
         if(n.role === "SN" || n.role === "GH"){
           n.join = JOIN.DP_ON;
         } else if(n.role === "FN"){
-          n.join = JOIN.STABLE;
+          n.join = JOIN.DP_ON;
         } else {
-          n.join = JOIN.SCAN;
+          n.join = JOIN.DP_ON;
         }
         n.sec.trust = TRUST.OK;
       }
@@ -711,6 +960,34 @@
       if(!dst) return;
       this._enqueue(n, DP, this._mkPkt(DP, DPCLS.ALARM, nodeId, dst, {speed:0.032, ttl:140}));
       this.onHud?.("Emergency dispatched", `${nodeId} sent an ALARM packet toward ${dst}. Forwarders adapt to prioritize ALARM traffic.`);
+    }
+
+    sendPatientEvent(patientId, kind){
+      this._sendPatientEvent(patientId, kind);
+    }
+
+    _sendPatientEvent(patientId, kind){
+      if(!this.systemOn) return;
+
+      const p = (this.patients||[]).find(x=>x.id===patientId);
+      if(!p) return;
+
+      const n = this._node(p.nodeId);
+      if(!n || !n.enabled || n.join===JOIN.OFF) return;
+
+      const dst = this._routeDestinationFor(n.id);
+      if(!dst) return;
+
+      const map = {
+        TELEMETRY: {cls: DPCLS.TELEMETRY, speed:0.026, ttl:180, label:"Normal vitals"},
+        HR_ALARM:  {cls: DPCLS.ALARM,     speed:0.032, ttl:140, label:"High HR"},
+        FALL:      {cls: DPCLS.ALARM,     speed:0.032, ttl:140, label:"Fall detected"},
+        NURSE_CALL:{cls: DPCLS.ALARM,     speed:0.032, ttl:140, label:"Nurse call"},
+      };
+      const cfg = map[kind] || map.TELEMETRY;
+
+      this._enqueue(n, DP, this._mkPkt(DP, cfg.cls, n.id, dst, cfg));
+      this.onHud?.("Patient event", `${patientId} (${p.room}) ${cfg.label} via ${n.id} → ${dst} → (SN) → GH`);
     }
 
     // -----------------------------------------------------------
@@ -749,6 +1026,39 @@
               if(n.ch?.bl){ n.ch.bl.clear(); n.ch.blUntil = {}; }
             });
             break;
+          case "PATIENT_EVENT":
+            this._sendPatientEvent(ev.patientId, ev.kind);
+            break;
+          case "MRI_ON":
+            this.interferenceSources.push({
+              id: ev.id || "MRI1",
+              x: ev.x, y: ev.y,
+              r: ev.r || 180,
+              strength: ev.strength || 0.8,
+              until: ev.until || (this.tick + 900)
+            });
+            this.onHud?.("MRI ON", "Localized EMI zone active. Nodes near MRI see higher PER; channels may blacklist.");
+            break;
+          case "MRI_OFF":
+            this.interferenceSources = (this.interferenceSources||[]).filter(s=>s.id!==ev.id);
+            this.onHud?.("MRI OFF", "EMI zone cleared.");
+            break;
+          case "SINK_DOWN":
+            this.setNodePower(ev.nodeId, false);
+            this.onHud?.("Sink DOWN", `${ev.nodeId} turned OFF. Nodes should reattach and use the other sink.`);
+            break;
+          case "SINK_UP":
+            this.setNodePower(ev.nodeId, true);
+            this.onHud?.("Sink UP", `${ev.nodeId} restored.`);
+            break;
+          case "GATEWAY_DOWN":
+            this.gatewayOnline = false;
+            this.onHud?.("Gateway DOWN", "Server/dashboard unreachable. Mesh CP continues locally; DP to GH will fail.");
+            break;
+          case "GATEWAY_UP":
+            this.gatewayOnline = true;
+            this.onHud?.("Gateway UP", "Server/dashboard reachable again.");
+            break;
         }
       }
     }
@@ -758,6 +1068,11 @@
       if(!n || !n.enabled) return;
       n.join = JOIN.SCAN;
       n.parent = null;
+      if(n.attach){
+        n.attach.parent = null;
+        n.attach.backups = [];
+        n.attach.sink = null;
+      }
       n.neighbors = [];
       // seed: prefer "via"
       n._joinVia = via || null;
@@ -889,8 +1204,10 @@
       const dst = this._node(pkt.dst);
       if(!dst || !dst.enabled) return this._drop(pkt, "NODE_OFF");
 
-      // GH is host uplink, always accept
-      if(dst.role!=="GH"){
+      // GH is host uplink, accept only if gateway online
+      if(dst.role==="GH"){
+        if(!this.gatewayOnline) return this._drop(pkt, "GW_DOWN");
+      } else {
         // Receiver Admission Control
         if(pkt.plane===DP && this.features.rac){
           if(!this._dpAccepted(dst, pkt.cls)){
@@ -919,6 +1236,20 @@
       return "DELIVERED";
     }
 
+    _localInterferenceAt(x,y){
+      if(!this.interferenceSources?.length) return 0;
+      let add = 0;
+      for(const s of this.interferenceSources){
+        const dx=x-s.x, dy=y-s.y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d <= s.r){
+          const w = 1 - (d/s.r);
+          add = Math.max(add, s.strength * w);
+        }
+      }
+      return add;
+    }
+
     _estimatePER(srcId, dstId, ch){
       // coarse model: base PER from interference + distance factor
       const A=this._node(srcId), B=this._node(dstId);
@@ -937,7 +1268,9 @@
         chPenalty = clamp(s,0,1)*0.25;
       }
 
-      const per = clamp(0.02 + this.knobs.interference*0.55 + dFactor*0.25 + chPenalty, 0, 0.95);
+      const midx = (A.x+B.x)/2, midy = (A.y+B.y)/2;
+      const emi = this._localInterferenceAt(midx, midy);
+      const per = clamp(0.02 + (this.knobs.interference + emi)*0.55 + dFactor*0.25 + chPenalty, 0, 0.95);
       return per;
     }
 
@@ -974,14 +1307,13 @@
 
       // hop-by-hop forwarding simulation
       if(pkt.plane===DP){
-        if(pkt.dst==="F1"){
-          this._maybeForwardFrom("F1", pkt);
-        }else if(pkt.dst==="F2"){
-          this._maybeForwardFrom("F2", pkt);
-        }else if(pkt.dst==="SN"){
+        const dst = this._node(pkt.dst);
+        if(dst?.role==="FN"){
+          this._maybeForwardFrom(dst.id, pkt);
+        }else if(dst?.role==="SN"){
           // delivered to sink - may generate uplink to GH as CP status
           if(this.features.cpdp && (this.tick%80===0)){
-            this._enqueue(this._node("SN"), CP, this._mkPkt(CP, null, "SN","GH", {speed:0.018}));
+            this._enqueue(dst, CP, this._mkPkt(CP, null, dst.id, "GH", {speed:0.018}));
           }
         }
       }
@@ -1088,8 +1420,9 @@
 
       if(!allow) return;
 
-      // choose next hop: toward SN (simple)
-      const next = (fnId==="F2") ? (this._node("F1")?.enabled ? "F1" : "SN") : "SN";
+      // choose next hop: toward best sink
+      const next = this._routeDestinationFor(fnId);
+      if(!next) return;
       const fwdPkt = this._mkPkt(DP, pkt.cls, fnId, next, {speed:0.028, ttl: 140});
       fwdPkt.hop = pkt.hop + 1;
 
@@ -1112,9 +1445,6 @@
       if(node.role==="SN") { node.join=JOIN.DP_ON; return; }
       if(node.role==="FN" && node.join===JOIN.STABLE) node.join=JOIN.DP_ON;
       if(node.join===JOIN.DP_ON) return;
-
-      // Only Enew uses full join in our default topology; others are already stable.
-      if(node.id!=="Enew") { node.join=JOIN.DP_ON; return; }
 
       // bounded neighbor list: pick up to 2 neighbors via links
       const nbrs = this._neighbors(node.id).filter(id=>id!=="GH").slice(0,2);
@@ -1304,18 +1634,86 @@
       return L ? L.dist : 99999;
     }
 
+    _enabledSinks(){
+      return this.nodes.filter(n=>n.role==="SN" && n.enabled);
+    }
+
+    _updateAttachment(node){
+      if(!node.enabled) return;
+      if(node.role==="GH" || node.role==="SN") return;
+      if(node.join===JOIN.OFF) return;
+
+      if(this.tick - (node.attach.lastEval||0) < 25) return;
+      node.attach.lastEval = this.tick;
+
+      const nbrIds = this._neighbors(node.id);
+      const nbrs = nbrIds.map(id=>this._node(id)).filter(n=>n && n.enabled && n.role!=="GH");
+      if(!nbrs.length) return;
+
+      const cand = nbrs
+        .filter(n => n.role==="FN" || n.role==="SN")
+        .map(n=>{
+          const dist = this._linkDist(node.id, n.id);
+          const racPenalty = (n.rac==="CRITICAL"? 220 : n.rac==="GUARDED"? 70 : 0);
+          const energyPenalty = (n.battery ? clamp((25-n.energy)/25,0,1)*120 : 0);
+          const score = dist + racPenalty + energyPenalty;
+          return {id:n.id, role:n.role, score};
+        })
+        .sort((a,b)=>a.score-b.score);
+
+      if(!cand.length) return;
+
+      const sinks = this._enabledSinks();
+      const sinkBest = sinks
+        .map(s=>{
+          const dx=node.x-s.x, dy=node.y-s.y;
+          return {id:s.id, d: Math.sqrt(dx*dx+dy*dy)};
+        })
+        .sort((a,b)=>a.d-b.d)[0]?.id || null;
+
+      node.attach.sink = sinkBest;
+
+      const newParent = cand[0].id;
+      const backups = cand.slice(1,4).map(c=>c.id);
+
+      const cur = node.attach.parent;
+      const curOk = cur && this._node(cur)?.enabled;
+
+      if(!curOk || cur!==newParent){
+        node.attach.parent = newParent;
+        node.attach.backups = backups;
+        node.parent = newParent;
+
+        if(this.features.explain){
+          this.drops.push({t:this.tick, x:node.x, y:node.y-30, msg:`REATTACH→${newParent}`});
+          if(this.drops.length>60) this.drops.splice(0, this.drops.length-60);
+        }
+      }
+    }
+
     _routeDestinationFor(nodeId){
       const n = this._node(nodeId);
       if(!n || !n.enabled) return null;
       if(n.role === "SN") return "GH";
-      if(n.role === "FN") return "SN";
+      if(n.role === "FN"){
+        const sinks = this._enabledSinks();
+        if(!sinks.length) return null;
+        sinks.sort((a,b)=>{
+          const da = Math.hypot(n.x-a.x, n.y-a.y);
+          const db = Math.hypot(n.x-b.x, n.y-b.y);
+          return da-db;
+        });
+        return sinks[0].id;
+      }
       if(n.role === "EN"){
-        const forwarders = ["F1","F2","F3"]
-          .map(id => this._node(id))
-          .filter(fn => fn?.enabled);
-        if(!forwarders.length) return null;
-        forwarders.sort((a,b)=>this._linkDist(n.id, a.id) - this._linkDist(n.id, b.id));
-        return forwarders[0].id;
+        const p = n.attach?.parent;
+        if(p && this._node(p)?.enabled) return p;
+
+        const cand = this.nodes
+          .filter(x => x.enabled && (x.role==="FN" || x.role==="SN"))
+          .map(x=>({id:x.id, d:Math.hypot(n.x-x.x, n.y-x.y)}))
+          .sort((a,b)=>a.d-b.d);
+        return cand[0]?.id || null;
       }
       return null;
     }
@@ -1327,27 +1725,25 @@
       // CP should survive; keep rate-limited
       if(!this.features.cpdp || !this.systemOn) return;
 
-      // beacons/health: SN<->F1, F1<->F2, F2<->E2, F1<->E1, F1<->E3, F3<->E4, F3<->E5
-      const be = (src,dst,mod) => {
+      // beacons/health on links inside the mesh
+      const meshLinks = this.links.filter(l=>{
+        const A=this._node(l.a), B=this._node(l.b);
+        return A && B && A.role!=="GH" && B.role!=="GH";
+      });
+
+      meshLinks.forEach((L, idx)=>{
+        const A = this._node(L.a), B = this._node(L.b);
+        if(!A||!B || !A.enabled || !B.enabled) return;
+        if(A.join===JOIN.OFF || B.join===JOIN.OFF) return;
+
+        const mod = 70 + (idx % 5) * 15;
         if(this.tick % mod === 0){
-          const s = this._node(src), d = this._node(dst);
-          if(!s||!d || !s.enabled || !d.enabled) return;
-          // only if both in mesh (joined)
-          if(s.join===JOIN.OFF || d.join===JOIN.OFF) return;
-          this._enqueue(s, CP, this._mkPkt(CP, null, src, dst, {speed:0.020, ttl:150}));
+          this._enqueue(A, CP, this._mkPkt(CP, null, A.id, B.id, {speed:0.020, ttl:150}));
         }
-      };
-      be("SN","F1", 55);
-      be("F1","SN", 70);
-      be("F1","F2", 80);
-      be("F2","F1", 85);
-      be("F1","E1", 90);
-      be("F2","E2", 100);
-      be("F1","E3", 120);
-      be("F1","F3", 95);
-      be("F3","F2", 100);
-      be("F3","E4", 110);
-      be("F3","E5", 125);
+        if(this.tick % (mod + 25) === 0){
+          this._enqueue(B, CP, this._mkPkt(CP, null, B.id, A.id, {speed:0.020, ttl:150}));
+        }
+      });
 
       // CP rekey announcements if suspect
       if(this.features.sec){
@@ -1355,7 +1751,10 @@
           if(n.role==="GH") continue;
           if(!n.enabled) continue;
           if(n.sec.trust===TRUST.SUSPECT && this.tick % 140 === 0){
-            this._enqueue(n, CP, this._mkPkt(CP, null, n.id, "SN", {speed:0.020, ttl:180}));
+            const sink = this._enabledSinks()[0];
+            if(sink){
+              this._enqueue(n, CP, this._mkPkt(CP, null, n.id, sink.id, {speed:0.020, ttl:180}));
+            }
           }
         }
       }
@@ -1379,17 +1778,15 @@
         return n && n.enabled && n.join===JOIN.DP_ON && n.sec.trust!==TRUST.QUARANTINE;
       };
 
-      const endpointProfiles = {
-        E1: {telemetry:1.0, alarm:1.0, bulk:0},
-        E2: {telemetry:1.0, alarm:0.8, bulk:0},
-        E3: {telemetry:0.7, alarm:0, bulk:1.0},
-        E4: {telemetry:0.9, alarm:0.7, bulk:0.6},
-        E5: {telemetry:0.6, alarm:0.5, bulk:0}
+      const endpointProfile = (n)=>{
+        if(n.id.startsWith("A")) return {telemetry:0.9, alarm:0.5, bulk:0.1};
+        if(n.id.startsWith("B")) return {telemetry:0.8, alarm:0.6, bulk:0.1};
+        return {telemetry:0.8, alarm:0.4, bulk:0.1};
       };
 
       for(const n of this.nodes){
         if(n.role !== "EN") continue;
-        const profile = endpointProfiles[n.id] || {telemetry:0.8, alarm:0.6, bulk:0};
+        const profile = endpointProfile(n);
         const dst = this._routeDestinationFor(n.id);
         if(!dst || !E(n.id)) continue;
 
@@ -1406,8 +1803,6 @@
         }
       }
 
-      const f1On = this._node("F1")?.enabled;
-
       // FUOTA chunk emission (bulk) from SN down to nodes
       if(this.features.fuota && this.tick % 35 === 0){
         for(const n of this.nodes){
@@ -1416,13 +1811,18 @@
           if(n.join!==JOIN.DP_ON) continue;
           if(n.fw.state!==FUOTA.TRANSFER) continue;
 
-          if(!f1On) break;
-          // send chunk from SN toward the node via F1 (simple)
-          // SN->F1 (bulk), then forwarding logic will carry onward only if windows/constraints allow.
-          this._enqueue(this._node("SN"), DP, this._mkPkt(DP, DPCLS.BULK, "SN","F1",{speed:0.020, ttl:220, size:180}));
+          const sink = this._enabledSinks()[0];
+          if(!sink) break;
+          const nextHop = this._neighbors(sink.id)
+            .map(id=>this._node(id))
+            .find(node=>node && node.enabled && node.role!=="GH");
+          if(!nextHop) break;
+
+          // send chunk from sink toward the node
+          this._enqueue(sink, DP, this._mkPkt(DP, DPCLS.BULK, sink.id, nextHop.id, {speed:0.020, ttl:220, size:180}));
           // and a hint-control (CTRL) to prioritize if degraded
           if(this.tick % 210 === 0){
-            this._enqueue(this._node("SN"), DP, this._mkPkt(DP, DPCLS.CTRL, "SN","F1",{speed:0.028, ttl:160, size:40}));
+            this._enqueue(sink, DP, this._mkPkt(DP, DPCLS.CTRL, sink.id, nextHop.id, {speed:0.028, ttl:160, size:40}));
           }
           break; // only one chunk batch per tick for clarity
         }
@@ -1482,6 +1882,10 @@
       // apply scenario events at this tick
       this._applyScenarioEvents();
 
+      if(this.interferenceSources?.length){
+        this.interferenceSources = this.interferenceSources.filter(s => !s.until || this.tick < s.until);
+      }
+
       // degraded mode logic
       this._updateDegradedMode();
 
@@ -1495,6 +1899,7 @@
         if(n.enabled){
           this._updateForwarding(n);
           this._updateRac(n);
+          this._updateAttachment(n);
           this._updateSecurity(n);
           this._updateFuota(n);
         }
@@ -1565,6 +1970,9 @@
         features: {...this.features},
         metrics: JSON.parse(JSON.stringify(this.metrics)),
         systemOn: this.systemOn,
+        rooms: (this.rooms||[]).map(r=>({...r})),
+        interferenceSources: (this.interferenceSources||[]).map(s=>({...s})),
+        gatewayOnline: this.gatewayOnline,
         nodes: this.nodes.map(n=>({
           id:n.id, role:n.role, x:n.x, y:n.y,
           battery:n.battery, energy:n.energy,
@@ -1613,6 +2021,8 @@
       this.svg = svg;
       this.sim = sim;
 
+      this.gRooms = svg.querySelector("#gRooms");
+      this.gInterf = svg.querySelector("#gInterf");
       this.gLinks = svg.querySelector("#gLinks");
       this.gPackets = svg.querySelector("#gPackets");
       this.gDrops = svg.querySelector("#gDrops");
@@ -1749,10 +2159,59 @@
 
     render(){
       const snap = this.sim.snapshot();
+      this._renderRooms(snap);
+      this._renderInterf(snap);
       this._renderLinks(snap);
       this._renderNodes(snap);
       this._renderPackets(snap);
       this._renderDrops(snap);
+    }
+
+    _renderRooms(snap){
+      if(!this.gRooms) return;
+      this.gRooms.innerHTML = "";
+      const rooms = snap.rooms || [];
+      for(const r of rooms){
+        const rect = el("rect", {
+          x:r.x, y:r.y, width:r.w, height:r.h,
+          rx:14, ry:14,
+          fill:"rgba(255,255,255,.02)",
+          stroke:"rgba(255,255,255,.08)",
+          "stroke-width":"2"
+        });
+        const label = el("text", {
+          x:r.x + 10, y:r.y + 20,
+          "text-anchor":"start",
+          "font-size":"12",
+          fill:"rgba(233,240,255,.75)"
+        });
+        label.textContent = r.id;
+        this.gRooms.appendChild(rect);
+        this.gRooms.appendChild(label);
+      }
+    }
+
+    _renderInterf(snap){
+      if(!this.gInterf) return;
+      this.gInterf.innerHTML = "";
+      const src = snap.interferenceSources || [];
+      for(const s of src){
+        const c = el("circle", {
+          cx:s.x, cy:s.y, r:s.r,
+          fill:"rgba(255,90,122,.08)",
+          stroke:"rgba(255,90,122,.22)",
+          "stroke-width":"2"
+        });
+        const t = el("text", {
+          x:s.x, y:s.y,
+          "text-anchor":"middle",
+          "font-size":"12",
+          fill:"rgba(255,90,122,.85)"
+        });
+        t.textContent = "MRI EMI";
+        this.gInterf.appendChild(c);
+        this.gInterf.appendChild(t);
+      }
     }
 
     _renderLinks(snap){
@@ -2021,6 +2480,61 @@
     });
   }
 
+  // Patient event controls
+  const patientSelect = $("patientSelect");
+  const patientEvent = $("patientEvent");
+
+  function syncPatientControls(){
+    patientSelect.innerHTML = "";
+    (sim.patients || []).forEach(p=>{
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = `${p.id} (${p.room} / ${p.nodeId})`;
+      patientSelect.appendChild(opt);
+    });
+  }
+
+  patientEvent.innerHTML = "";
+  [
+    {value:"TELEMETRY", label:"Telemetry"},
+    {value:"HR_ALARM", label:"High HR Alarm"},
+    {value:"FALL", label:"Fall Detected"},
+    {value:"NURSE_CALL", label:"Nurse Call"},
+  ].forEach(opt=>{
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.label;
+    patientEvent.appendChild(o);
+  });
+
+  $("btnPatientEvent").addEventListener("click", ()=>{
+    sim.sendPatientEvent(patientSelect.value, patientEvent.value);
+  });
+
+  // MRI controls
+  $("btnMriOn").addEventListener("click", ()=>{
+    sim.interferenceSources = (sim.interferenceSources || []).filter(s=>s.id!=="MRI_UI");
+    sim.interferenceSources.push({
+      id:"MRI_UI",
+      x: 740,
+      y: 360,
+      r: 220,
+      strength: 0.85
+    });
+    sim.onHud("MRI ON", "Localized EMI zone active (Ward B).");
+  });
+
+  $("btnMriOff").addEventListener("click", ()=>{
+    sim.interferenceSources = (sim.interferenceSources || []).filter(s=>s.id!=="MRI_UI");
+    sim.onHud("MRI OFF", "EMI zone cleared.");
+  });
+
+  // Gateway toggle
+  const gatewayToggle = $("gatewayToggle");
+  gatewayToggle.addEventListener("change", ()=>{
+    sim.gatewayOnline = !!gatewayToggle.checked;
+  });
+
   // Node power toggles
   const nodeToggles = $("nodeToggles");
   function renderNodeToggles(){
@@ -2104,6 +2618,8 @@
     syncSystemPower();
     renderNodeToggles();
     syncEmergencyNodes();
+    syncPatientControls();
+    gatewayToggle.checked = !!sim.gatewayOnline;
   }
 
   function kpisFromSnap(snap){
@@ -2111,6 +2627,15 @@
     $("kTick").textContent = String(snap.tick);
     $("kDel").textContent = `${snap.metrics.delCP} / ${snap.metrics.delDP}`;
     $("kDrop").textContent = String(snap.metrics.drop);
+  }
+
+  function updateGatewayStatus(snap){
+    const badge = $("hudServer");
+    const online = !!snap.gatewayOnline;
+    badge.textContent = online ? "Connected" : "Disconnected";
+    badge.classList.toggle("ok", online);
+    badge.classList.toggle("bad", !online);
+    gatewayToggle.checked = online;
   }
 
   function renderInspector(snap){
@@ -2165,6 +2690,7 @@
   function tickUiAndRender(){
     const snap = sim.snapshot();
     kpisFromSnap(snap);
+    updateGatewayStatus(snap);
     renderInspector(snap);
     renderMetrics(snap);
     renderer.render();
