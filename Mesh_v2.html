@@ -134,7 +134,17 @@
       line-height:1.35;
     }
 
-    .stage{position:relative; height:100%;}
+    .stage{
+      display:flex;
+      flex-direction:column;
+      height:100%;
+      min-height:0;
+    }
+    .canvas{
+      position:relative;
+      flex:1;
+      min-height:0;
+    }
     svg{width:100%; height:100%; display:block;}
 
     .hud{
@@ -207,10 +217,7 @@
     }
 
     .logbox{
-      position:absolute;
-      left:14px;
-      right:14px;
-      bottom:14px;
+      margin:0 14px 14px;
       background: rgba(0,0,0,.35);
       border:1px solid rgba(255,255,255,.12);
       backdrop-filter: blur(6px);
@@ -219,7 +226,7 @@
       display:flex;
       flex-direction:column;
       gap:8px;
-      max-height: 180px;
+      height: 180px;
     }
     .logbox .head{
       display:flex;
@@ -242,6 +249,8 @@
       overflow:auto;
       font-size:11px;
       color:rgba(233,240,255,.92);
+      flex:1;
+      min-height:0;
     }
     .logbox .line{
       display:flex;
@@ -435,35 +444,37 @@
     </aside>
 
     <main class="stage">
-      <div class="hud">
-        <div class="t" id="hudTitle">Ready</div>
-        <div class="d" id="hudDesc">Load a scenario and press Play. Click nodes to inspect.</div>
-        <div class="status-line">
-          <span>Server</span>
-          <span class="status-pill ok" id="hudServer">Connected</span>
+      <div class="canvas">
+        <div class="hud">
+          <div class="t" id="hudTitle">Ready</div>
+          <div class="d" id="hudDesc">Load a scenario and press Play. Click nodes to inspect.</div>
+          <div class="status-line">
+            <span>Server</span>
+            <span class="status-pill ok" id="hudServer">Connected</span>
+          </div>
         </div>
-      </div>
 
-      <div class="legend">
-        <div class="row"><span class="shape diamond"></span><span class="small">CP packets (diamond)</span></div>
-        <div class="row"><span class="shape circle"></span><span class="small">DP packets (circle)</span></div>
-        <div class="row"><span class="shape triangle"></span><span class="small">Emergency ALARM (triangle)</span></div>
-        <div class="row"><span class="dot warn"></span><span class="small">RAC = GUARDED</span></div>
-        <div class="row"><span class="dot bad"></span><span class="small">RAC = CRITICAL</span></div>
-        <div class="small" style="margin-top:6px">
-          Click nodes for details. Enable <b>Explain</b> to see drop reasons / blacklists.
+        <div class="legend">
+          <div class="row"><span class="shape diamond"></span><span class="small">CP packets (diamond)</span></div>
+          <div class="row"><span class="shape circle"></span><span class="small">DP packets (circle)</span></div>
+          <div class="row"><span class="shape triangle"></span><span class="small">Emergency ALARM (triangle)</span></div>
+          <div class="row"><span class="dot warn"></span><span class="small">RAC = GUARDED</span></div>
+          <div class="row"><span class="dot bad"></span><span class="small">RAC = CRITICAL</span></div>
+          <div class="small" style="margin-top:6px">
+            Click nodes for details. Enable <b>Explain</b> to see drop reasons / blacklists.
+          </div>
         </div>
-      </div>
 
-      <svg id="svg" viewBox="0 0 1100 650" aria-label="mesh diagram">
-        <g id="gRooms"></g>
-        <g id="gInterf"></g>
-        <g id="gLinks"></g>
-        <g id="gPackets"></g>
-        <g id="gDrops"></g>
-        <g id="gNodes"></g>
-        <g id="gLabels"></g>
-      </svg>
+        <svg id="svg" viewBox="0 0 1100 650" aria-label="mesh diagram">
+          <g id="gRooms"></g>
+          <g id="gInterf"></g>
+          <g id="gLinks"></g>
+          <g id="gPackets"></g>
+          <g id="gDrops"></g>
+          <g id="gNodes"></g>
+          <g id="gLabels"></g>
+        </svg>
+      </div>
       <div class="logbox">
         <div class="head">
           <div class="title">Live Explanation</div>
@@ -494,7 +505,7 @@
     2200,
     [
       {t:0, type:"SET_HUD", title:"Baseline", desc:"System starts stable. A new node will join via a chosen parent; DP turns on after CP stability gate."},
-      {t:60, type:"JOIN_NODE", nodeId:"A06", via:"C1"},
+      {t:60, type:"JOIN_NODE", nodeId:"A05", via:"C1"},
       {t:120, type:"SET_TRAFFIC", value:1.1},
       {t:140, type:"SET_INTERFERENCE", value:0.12},
       {t:400, type:"SET_HUD", title:"DP enabled progressively", desc:"After CP is stable, DP telemetry begins. Forwarders may open ephemeral forwarding windows."},
@@ -510,7 +521,7 @@
     2400,
     [
       {t:0, type:"SET_HUD", title:"RAC Demo", desc:"Traffic and interference will increase. Receiver Admission Control will enter Guarded/Critical and drop DP selectively."},
-      {t:40, type:"JOIN_NODE", nodeId:"B08", via:"C2"},
+      {t:40, type:"JOIN_NODE", nodeId:"B07", via:"C2"},
       {t:100, type:"SET_TRAFFIC", value:1.4},
       {t:460, type:"SET_TRAFFIC", value:3.8},
       {t:520, type:"SET_INTERFERENCE", value:0.55},
@@ -588,10 +599,10 @@
   add(
     "hospital_s1_telemetry",
     "Hospital S1: Normal vitals (telemetry)",
-    "Ward A/B periodic telemetry from multiple endpoints; stable CP + DP.",
+    "ROOM-A/ROOM-B periodic telemetry from multiple endpoints; stable CP + DP.",
     2200,
     [
-      {t:0, type:"SET_HUD", title:"S1 Normal Telemetry", desc:"Vitals flow from Ward A/B to GH via best sink. Observe stable DP + CP."},
+      {t:0, type:"SET_HUD", title:"S1 Normal Telemetry", desc:"Vitals flow from ROOM-A/ROOM-B to GH via best sink. Observe stable DP + CP."},
       {t:80, type:"PATIENT_EVENT", patientId:"P1", kind:"TELEMETRY"},
       {t:120, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
       {t:160, type:"PATIENT_EVENT", patientId:"P3", kind:"TELEMETRY"},
@@ -606,7 +617,7 @@
 
   add(
     "hospital_s2_hr_alarm",
-    "Hospital S2: High HR Alarm (Ward B)",
+    "Hospital S2: High HR Alarm (ROOM-B)",
     "B03 sends ALARM bursts (higher priority).",
     2400,
     [
@@ -622,7 +633,7 @@
 
   add(
     "hospital_s3_fall",
-    "Hospital S3: Patient Fall (Ward A)",
+    "Hospital S3: Patient Fall (ROOM-A)",
     "A02 sends ALARM burst; RAC preserves ALARM.",
     2400,
     [
@@ -637,7 +648,7 @@
 
   add(
     "hospital_s4_nurse_call",
-    "Hospital S4: Nurse Call (Ward B)",
+    "Hospital S4: Nurse Call (ROOM-B)",
     "B06 sends ALARM; delivery prioritized.",
     2000,
     [
@@ -654,7 +665,7 @@
     "MRI ON affects B02,B03,B04; reroute away until MRI OFF.",
     2600,
     [
-      {t:0, type:"SET_HUD", title:"S5 MRI Interference", desc:"MRI turns ON near Ward B. Observe PER increase + reroute away from B02/B03/B04."},
+      {t:0, type:"SET_HUD", title:"S5 MRI Interference", desc:"MRI turns ON near ROOM-B. Observe PER increase + reroute away from B02/B03/B04."},
       {t:120, type:"MRI_ON"},
       {t:160, type:"PATIENT_EVENT", patientId:"P2", kind:"TELEMETRY"},
       {t:220, type:"PATIENT_EVENT", patientId:"P5", kind:"TELEMETRY"},
@@ -816,23 +827,46 @@
       return {id, x, y, w, h};
     }
 
-    _randInRoom(room){
-      const rx = rand(this.seed), ry = rand(this.seed);
-      return { x: room.x + 40 + rx*(room.w-80), y: room.y + 40 + ry*(room.h-80) };
+    _gridPositions(room, count){
+      const padding = 50;
+      const usableW = Math.max(60, room.w - padding * 2);
+      const usableH = Math.max(60, room.h - padding * 2);
+      let best = null;
+      for(let cols=1; cols<=count; cols++){
+        const rows = Math.ceil(count / cols);
+        const sx = cols > 1 ? usableW / (cols - 1) : usableW;
+        const sy = rows > 1 ? usableH / (rows - 1) : usableH;
+        const minS = Math.min(sx, sy);
+        if(!best || minS > best.minS){
+          best = {cols, rows, sx, sy, minS};
+        }
+      }
+
+      const out = [];
+      for(let i=0;i<count;i++){
+        const row = Math.floor(i / best.cols);
+        const col = i % best.cols;
+        const jitterX = (rand(this.seed) - 0.5) * 12;
+        const jitterY = (rand(this.seed) - 0.5) * 12;
+        const x = room.x + padding + col * best.sx + jitterX;
+        const y = room.y + padding + row * best.sy + jitterY;
+        out.push({x, y});
+      }
+      return out;
     }
 
     _initTopology(){
       const baseE = this.knobs.energyBudget;
 
       this.rooms = [
-        this._makeRoom("WardA", 60, 120, 340, 420),
-        this._makeRoom("WardB", 430, 120, 340, 420),
+        this._makeRoom("ROOM-A", 60, 120, 340, 420),
+        this._makeRoom("ROOM-B", 430, 120, 340, 420),
         this._makeRoom("GatewayRoom", 800, 120, 240, 190),
         this._makeRoom("NurseStation", 800, 360, 240, 190),
       ];
 
       const roomById = (id)=>this.rooms.find(r=>r.id===id);
-      const place = (rid)=>this._randInRoom(roomById(rid));
+      const place = (rid)=>this._gridPositions(roomById(rid), 1)[0];
 
       this.nodes = [];
 
@@ -850,17 +884,19 @@
         this.nodes.push(this._mkNode("SN2","SN", p2.x, p2.y, baseE*2.5, false));
       }
 
-      // Ward A endpoints
-      for(let i=1;i<=6;i++){
+      // Room A endpoints
+      const roomAPos = this._gridPositions(roomById("ROOM-A"), 5);
+      for(let i=1;i<=5;i++){
         const id = "A"+String(i).padStart(2,"0");
-        const p = place("WardA");
+        const p = roomAPos[i-1];
         this.nodes.push(this._mkNode(id,"EN", p.x, p.y, baseE, true));
       }
 
-      // Ward B endpoints
-      for(let i=1;i<=8;i++){
+      // Room B endpoints
+      const roomBPos = this._gridPositions(roomById("ROOM-B"), 7);
+      for(let i=1;i<=7;i++){
         const id = "B"+String(i).padStart(2,"0");
-        const p = place("WardB");
+        const p = roomBPos[i-1];
         this.nodes.push(this._mkNode(id,"EN", p.x, p.y, baseE, true));
       }
 
@@ -881,11 +917,11 @@
 
       // Patient mapping
       this.patients = [
-        {id:"P1", room:"WardA", nodeId:"A01"},
-        {id:"P2", room:"WardB", nodeId:"B03"},
-        {id:"P3", room:"WardA", nodeId:"A02"},
-        {id:"P4", room:"WardB", nodeId:"B06"},
-        {id:"P5", room:"WardB", nodeId:"B02"},
+        {id:"P1", room:"ROOM-A", nodeId:"A01"},
+        {id:"P2", room:"ROOM-B", nodeId:"B03"},
+        {id:"P3", room:"ROOM-A", nodeId:"A02"},
+        {id:"P4", room:"ROOM-B", nodeId:"B06"},
+        {id:"P5", room:"ROOM-B", nodeId:"B02"},
       ];
 
       this.gatewayOnline = true;
@@ -1080,6 +1116,21 @@
       }
     }
 
+    setMriOn(isOn){
+      this.mriOn = !!isOn;
+      if(this.mriOn){
+        this.logEvent("WARN", "MRI ON → affected: B02,B03,B04 → forcing reattach");
+        this.onHud?.("MRI ON", "MRI EMI active near ROOM-B beds. Affected nodes reroute away from interference.");
+      } else {
+        this.logEvent("INFO", "MRI OFF → interference cleared → forcing reattach");
+        this.onHud?.("MRI OFF", "MRI EMI cleared. Links stabilize and drops reduce.");
+      }
+      this.nodes.forEach(n=>{
+        if(n.attach) n.attach.lastEvalTick = -999999;
+      });
+      this._forceReattachAll("MRI_TOGGLE");
+    }
+
     sendEmergencyFrom(nodeId){
       if(!this.systemOn) return;
       const n = this._node(nodeId);
@@ -1160,14 +1211,10 @@
             this._sendPatientEvent(ev.patientId, ev.kind);
             break;
           case "MRI_ON":
-            this.mriOn = true;
-            this.logEvent("WARN", "MRI ON → affected: B02,B03,B04 → rerouting");
-            this.onHud?.("MRI ON", "MRI EMI active near Ward B beds. Affected nodes reroute away from interference.");
+            this.setMriOn(true);
             break;
           case "MRI_OFF":
-            this.mriOn = false;
-            this.logEvent("INFO", "MRI OFF → interference cleared → stabilizing");
-            this.onHud?.("MRI OFF", "MRI EMI cleared. Links stabilize and drops reduce.");
+            this.setMriOn(false);
             break;
           case "SINK_DOWN":
             this.setNodePower(ev.nodeId, false);
@@ -1775,10 +1822,20 @@
       }
     }
 
-    _updateAttachment(node){
+    _forceReattachAll(reason=""){
+      for(const n of this.nodes){
+        if(!n.enabled) continue;
+        if(n.join===JOIN.OFF) continue;
+        this._updateAttachment(n, {force:true, reason});
+      }
+    }
+
+    _updateAttachment(node, opts={}){
       if(!node.enabled) return;
       if(node.role==="GH" || node.role==="SN") return;
       if(node.join===JOIN.OFF) return;
+      const force = !!opts.force;
+      const reasonTag = opts.reason || "";
 
       // immediate failover if parent down
       const parentDown = node.attach.parent && !this._node(node.attach.parent)?.enabled;
@@ -1791,11 +1848,11 @@
         node.attach.lastEvalTick = -999;
       }
 
-      if(this.tick - (node.attach.lastEvalTick||0) < 25) return;
+      if(!force && this.tick - (node.attach.lastEvalTick||0) < 25) return;
       node.attach.lastEvalTick = this.tick;
 
       const wDist = 1.0;
-      const wMri = 2.5;
+      const wMri = 4.0;
       const wRac = 0.8;
       const wEnergy = 0.4;
 
@@ -1809,7 +1866,7 @@
         ? (n)=>n.role==="SN"
         : (n)=>n.role==="FN" || n.role==="SN";
 
-      const cand = nbrs
+      const candidates = nbrs
         .filter(roleFilter)
         .map(n=>{
           const dist = this._linkDist(node.id, n.id);
@@ -1818,11 +1875,18 @@
           const energyPenalty = (n.battery ? clamp((30-n.energy)/30,0,1) : 0);
           const mriPenalty = (this.mriOn && (this.mriAffected.has(n.id) || mriHit)) ? 1 : 0;
           const score = (wDist*distNorm) + (wRac*racPenalty) + (wEnergy*energyPenalty) + (wMri*mriPenalty);
-          return {id:n.id, role:n.role, score};
+          return {id:n.id, role:n.role, score, mriPenalty};
+        });
+
+      if(!candidates.length) return;
+
+      const hasNonMri = candidates.some(c=>c.mriPenalty === 0);
+      const cand = candidates
+        .map(c=>{
+          const hardPenalty = (this.mriOn && hasNonMri && c.mriPenalty > 0) ? 999 : 0;
+          return {...c, score: c.score + hardPenalty};
         })
         .sort((a,b)=>a.score-b.score);
-
-      if(!cand.length) return;
 
       const sinks = this._enabledSinks();
       const sinkBest = sinks
@@ -1843,8 +1907,11 @@
       const cur = node.attach.parent;
       const reason = this.mriOn && (mriHit || (cur && this.mriAffected.has(cur))) ? "MRI avoidance" : "";
       const curOk = cur && this._node(cur)?.enabled;
-      if(!curOk || cur!==newParent){
-        this._setParent(node, newParent, reason);
+      const curMriPenalized = this.mriOn && cur && this.mriAffected.has(cur);
+      const shouldSwitch = force || !curOk || cur!==newParent || curMriPenalized;
+      if(shouldSwitch){
+        const reasonNote = reasonTag ? `${reasonTag}${reason ? ` ${reason}` : ""}`.trim() : reason;
+        this._setParent(node, newParent, reasonNote);
       }
     }
 
@@ -2199,6 +2266,7 @@
         metrics: JSON.parse(JSON.stringify(this.metrics)),
         systemOn: this.systemOn,
         mriOn: this.mriOn,
+        mriAffected: [...this.mriAffected],
         log: this.log.map(l=>({...l})),
         rooms: (this.rooms||[]).map(r=>({...r})),
         gatewayOnline: this.gatewayOnline,
@@ -2328,7 +2396,7 @@
           "font-size":"12",
           fill:"rgba(233,240,255,.88)"
         });
-        l1.textContent = `${n.id} — ${n.role}`;
+        l1.textContent = `${n.id}`;
         this.gLabels.appendChild(l1);
 
         const l2 = el("text", {
@@ -2337,7 +2405,7 @@
           "font-size":"11",
           fill:"rgba(169,182,223,.86)"
         });
-        l2.textContent = (n.role==="GH") ? "Host uplink (outside mesh)" : (n.battery ? "Battery node" : "Non-battery");
+        l2.textContent = "";
         this.gLabels.appendChild(l2);
 
         this.labelEls.set(n.id, {l1,l2});
@@ -2559,26 +2627,35 @@
           els.core.setAttribute("stroke", s);
         }
 
-        // ring1: forwarding active
+        // ring1: forwarding active / MRI affected
         let ringStroke = "rgba(255,255,255,0)";
         if(n.promoted && n.enabled) ringStroke = "var(--promoted)";
         if(n.role==="FN" && n.fwd?.active && n.enabled) ringStroke = "rgba(168,255,99,.95)";
+        const isMri = snap.mriOn && (snap.mriAffected || []).includes(n.id);
+        if(isMri && ringStroke === "rgba(255,255,255,0)") ringStroke = "rgba(255,90,122,.85)";
         els.ring1.setAttribute("stroke", ringStroke);
 
         // ring2: selected node
         const sel = (snap.selectedNodeId === n.id);
         els.ring2.setAttribute("stroke", sel ? "rgba(80,211,255,.95)" : "rgba(255,255,255,0)");
 
-        // update label2 with energy/join state compactly
+        // update labels: minimal by default, full on selection
         const labs = this.labelEls.get(n.id);
         if(labs){
           const roleLabel = n.promoted ? "FN*" : n.role;
-          labs.l1.textContent = `${n.id} — ${roleLabel}`;
-          const e = n.battery ? `E=${n.energy.toFixed(0)}` : "E=—";
-          const on = n.enabled ? "ON" : "OFF";
-          labs.l2.textContent =
-            (n.role==="GH") ? "Host uplink (outside mesh)" :
-            `${e} | ${on} | JOIN=${n.join} | RADIO=${n.radio}`;
+          if(sel){
+            labs.l1.textContent = `${n.id} — ${roleLabel}`;
+            const e = n.battery ? `E=${n.energy.toFixed(0)}` : "E=—";
+            const on = n.enabled ? "ON" : "OFF";
+            labs.l2.textContent =
+              (n.role==="GH") ? "Host uplink (outside mesh)" :
+              `${e} | ${on} | JOIN=${n.join} | RADIO=${n.radio}`;
+            labs.l2.setAttribute("opacity", "1");
+          } else {
+            labs.l1.textContent = `${n.id}`;
+            labs.l2.textContent = "";
+            labs.l2.setAttribute("opacity", "0");
+          }
         }
       }
     }
@@ -2805,14 +2882,7 @@
     mriToggle.classList.toggle("danger", sim.mriOn);
   };
   mriToggle.addEventListener("click", ()=>{
-    sim.mriOn = !sim.mriOn;
-    if(sim.mriOn){
-      sim.logEvent("WARN", "MRI ON → affected: B02,B03,B04 → rerouting");
-      sim.onHud("MRI ON", "MRI EMI active near Ward B beds. Affected nodes reroute away from interference.");
-    } else {
-      sim.logEvent("INFO", "MRI OFF → interference cleared → stabilizing");
-      sim.onHud("MRI OFF", "MRI EMI cleared. Links stabilize and drops reduce.");
-    }
+    sim.setMriOn(!sim.mriOn);
     syncMriBtn();
   });
 
